@@ -1,5 +1,6 @@
 import React, { useState, useContext, createContext, useEffect } from 'react';
 import { Eye, EyeOff, User, Mail, Lock, PenTool, Shield, BookOpen, CheckCircle } from 'lucide-react';
+import apiService from './api'
 
 // Auth Context
 const AuthContext = createContext();
@@ -9,20 +10,22 @@ const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      // In a real app, verify token with backend
-      try {
-        const userData = JSON.parse(localStorage.getItem('user'));
-        if (userData) {
-          setUser(userData);
+    const initializeAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const response = await apiService.getCurrentUser();
+          setUser(response.user);
+        } catch (error) {
+          console.error('Token validation failed:', error);
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
         }
-      } catch (error) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
   const login = (userData, token) => {
@@ -78,22 +81,10 @@ const LoginForm = ({ onSwitchToRegister }) => {
     setError('');
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock successful login
-      const mockUser = {
-        id: '1',
-        fullName: 'John Doe',
-        email: formData.email,
-        role: formData.email.includes('reviewer') ? 'reviewer' : 'writer',
-        bio: 'Passionate writer and researcher',
-        expertise: ['Technology', 'Science']
-      };
-      
-      login(mockUser, 'mock-jwt-token');
+      const response = await apiService.login(formData);
+      login(response.user, response.token);
     } catch (err) {
-      setError('Invalid email or password');
+      setError(err.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -172,12 +163,6 @@ const LoginForm = ({ onSwitchToRegister }) => {
             </button>
           </p>
         </div>
-
-        <div className="mt-4 text-center">
-          <p className="text-sm text-gray-500">
-            Demo: Use any email (add "reviewer" for reviewer role)
-          </p>
-        </div>
       </div>
     </div>
   );
@@ -226,22 +211,19 @@ const RegisterForm = ({ onSwitchToLogin }) => {
     }
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Mock successful registration
-      const mockUser = {
-        id: '1',
+      const registrationData = {
         fullName: formData.fullName,
         email: formData.email,
+        password: formData.password,
         role: formData.role,
         bio: formData.bio,
-        expertise: formData.expertise.split(',').map(exp => exp.trim()).filter(exp => exp)
+        expertise: formData.expertise
       };
-      
-      login(mockUser, 'mock-jwt-token');
+
+      const response = await apiService.register(registrationData);
+      login(response.user, response.token);
     } catch (err) {
-      setError('Registration failed. Please try again.');
+      setError(err.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
