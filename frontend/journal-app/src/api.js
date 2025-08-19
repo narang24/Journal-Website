@@ -50,6 +50,21 @@ const apiService = {
     });
   },
 
+  // Password reset methods
+  async forgotPassword(email) {
+    return this.request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    });
+  },
+
+  async resetPassword(token, password) {
+    return this.request(`/auth/reset-password/${token}`, {
+      method: 'POST',
+      body: JSON.stringify({ password })
+    });
+  },
+
   // Health check
   async healthCheck() {
     return this.request('/health');
