@@ -2,12 +2,12 @@
   "name": "journal-platform-backend",
   "version": "1.0.0",
   "description": "Backend for Journal Platform - MERN Stack",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+ "main": "backend/index.js",
+"scripts": {
+  "start": "node backend/index.js",
+  "dev": "nodemon backend/index.js",
+  "test": "echo \"Error: no test specified\" && exit 1"
+},
   "keywords": [
     "journal",
     "mern",
