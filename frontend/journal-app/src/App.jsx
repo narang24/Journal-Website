@@ -1,5 +1,5 @@
 import React, { useState, useContext, createContext, useEffect } from 'react';
-import { Eye, EyeOff, User, Mail, Lock, PenTool, Shield, BookOpen, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, User, Mail, Lock, PenTool, Shield, BookOpen, CheckCircle, ArrowLeft, FileText, Upload, Settings, Users, Search, Filter, Plus, Edit, Trash2, Clock, CheckSquare, X } from 'lucide-react';
 
 // Mock API service for demonstration
 const apiService = {
@@ -11,7 +11,7 @@ const apiService = {
         id: '1',
         fullName: 'John Doe',
         email: formData.email,
-        role: 'writer',
+        role: 'publisher', // Default role is now publisher
         bio: 'Sample bio',
         expertise: ['React', 'JavaScript']
       },
@@ -27,7 +27,7 @@ const apiService = {
         id: '1',
         fullName: formData.fullName,
         email: formData.email,
-        role: formData.role,
+        role: 'publisher', // Default role is publisher
         bio: formData.bio,
         expertise: formData.expertise.split(',').map(e => e.trim()).filter(e => e)
       },
@@ -57,13 +57,47 @@ const apiService = {
           id: '1',
           fullName: 'John Doe',
           email: 'john@example.com',
-          role: 'writer',
+          role: 'publisher',
           bio: 'Sample bio',
           expertise: ['React', 'JavaScript']
         }
       };
     }
     throw new Error('No token found');
+  },
+
+  // New API methods for manuscript management
+  getManuscripts: async (userId, role) => {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    // Mock manuscripts data
+    const manuscripts = [
+      {
+        id: 1,
+        title: 'Advanced React Patterns in Modern Web Development',
+        abstract: 'This paper explores advanced React patterns...',
+        status: role === 'publisher' ? 'published' : 'pending_review',
+        submittedDate: '2024-01-15',
+        authors: ['John Doe', 'Jane Smith'],
+        keywords: ['React', 'Web Development', 'JavaScript'],
+        category: 'Computer Science'
+      },
+      {
+        id: 2,
+        title: 'Machine Learning Applications in Healthcare',
+        abstract: 'A comprehensive study on ML applications...',
+        status: role === 'publisher' ? 'under_review' : 'assigned',
+        submittedDate: '2024-01-20',
+        authors: ['Alice Johnson'],
+        keywords: ['Machine Learning', 'Healthcare', 'AI'],
+        category: 'Medical Sciences'
+      }
+    ];
+    return manuscripts;
+  },
+
+  submitManuscript: async (manuscriptData) => {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return { success: true, manuscriptId: Date.now() };
   }
 };
 
@@ -73,6 +107,7 @@ const AuthContext = createContext();
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [currentRole, setCurrentRole] = useState('publisher'); // Default role
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -81,6 +116,7 @@ const AuthProvider = ({ children }) => {
         try {
           const response = await apiService.getCurrentUser();
           setUser(response.user);
+          setCurrentRole(response.user.role);
         } catch (error) {
           console.error('Token validation failed:', error);
           localStorage.removeItem('token');
@@ -97,16 +133,22 @@ const AuthProvider = ({ children }) => {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
+    setCurrentRole('publisher'); // Default to publisher role
   };
 
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
+    setCurrentRole('publisher');
+  };
+
+  const switchRole = (newRole) => {
+    setCurrentRole(newRole);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, currentRole, switchRole }}>
       {children}
     </AuthContext.Provider>
   );
@@ -118,6 +160,585 @@ const useAuth = () => {
     throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
+};
+
+// Manuscript Submission Form
+const ManuscriptSubmissionForm = ({ onClose, onSubmit }) => {
+  const [formData, setFormData] = useState({
+    title: '',
+    abstract: '',
+    authors: '',
+    keywords: '',
+    category: '',
+    file: null
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value, files } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: files ? files[0] : value
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      const manuscriptData = {
+        ...formData,
+        authors: formData.authors.split(',').map(a => a.trim()),
+        keywords: formData.keywords.split(',').map(k => k.trim()),
+        submittedDate: new Date().toISOString().split('T')[0]
+      };
+      
+      await apiService.submitManuscript(manuscriptData);
+      onSubmit();
+      onClose();
+    } catch (error) {
+      console.error('Submission failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-2xl font-bold text-gray-800">Submit New Manuscript</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
+            <input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Abstract</label>
+            <textarea
+              name="abstract"
+              value={formData.abstract}
+              onChange={handleChange}
+              rows="4"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Authors (comma separated)</label>
+              <input
+                type="text"
+                name="authors"
+                value={formData.authors}
+                onChange={handleChange}
+                placeholder="John Doe, Jane Smith"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+              <select
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              >
+                <option value="">Select Category</option>
+                <option value="Computer Science">Computer Science</option>
+                <option value="Medical Sciences">Medical Sciences</option>
+                <option value="Engineering">Engineering</option>
+                <option value="Physics">Physics</option>
+                <option value="Chemistry">Chemistry</option>
+                <option value="Biology">Biology</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Keywords (comma separated)</label>
+            <input
+              type="text"
+              name="keywords"
+              value={formData.keywords}
+              onChange={handleChange}
+              placeholder="React, JavaScript, Web Development"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Manuscript File</label>
+            <input
+              type="file"
+              name="file"
+              onChange={handleChange}
+              accept=".pdf,.doc,.docx"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+            />
+            <p className="text-sm text-gray-500 mt-1">Accepted formats: PDF, DOC, DOCX</p>
+          </div>
+
+          <div className="flex space-x-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              {loading ? 'Submitting...' : 'Submit Manuscript'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// Manuscript Card Component
+const ManuscriptCard = ({ manuscript, role }) => {
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'published':
+        return 'bg-green-100 text-green-800';
+      case 'under_review':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'pending_review':
+        return 'bg-blue-100 text-blue-800';
+      case 'assigned':
+        return 'bg-purple-100 text-purple-800';
+      case 'rejected':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'published':
+        return 'Published';
+      case 'under_review':
+        return 'Under Review';
+      case 'pending_review':
+        return 'Pending Review';
+      case 'assigned':
+        return 'Review Assigned';
+      case 'rejected':
+        return 'Rejected';
+      default:
+        return status;
+    }
+  };
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+      <div className="flex justify-between items-start mb-4">
+        <h3 className="text-lg font-semibold text-gray-800 line-clamp-2">{manuscript.title}</h3>
+        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(manuscript.status)}`}>
+          {getStatusText(manuscript.status)}
+        </span>
+      </div>
+      
+      <p className="text-gray-600 mb-4 line-clamp-3">{manuscript.abstract}</p>
+      
+      <div className="space-y-2 mb-4">
+        <div className="flex flex-wrap gap-1">
+          <span className="text-sm text-gray-500">Authors:</span>
+          {manuscript.authors.map((author, index) => (
+            <span key={index} className="text-sm text-gray-700">
+              {author}{index < manuscript.authors.length - 1 ? ', ' : ''}
+            </span>
+          ))}
+        </div>
+        
+        <div className="flex flex-wrap gap-1">
+          {manuscript.keywords.map((keyword, index) => (
+            <span key={index} className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs">
+              {keyword}
+            </span>
+          ))}
+        </div>
+      </div>
+      
+      <div className="flex justify-between items-center">
+        <span className="text-sm text-gray-500">
+          Submitted: {new Date(manuscript.submittedDate).toLocaleDateString()}
+        </span>
+        <div className="flex space-x-2">
+          {role === 'publisher' ? (
+            <>
+              <button className="flex items-center text-blue-600 hover:text-blue-700 text-sm">
+                <Edit className="w-4 h-4 mr-1" />
+                Edit
+              </button>
+              <button className="flex items-center text-gray-600 hover:text-gray-700 text-sm">
+                <Eye className="w-4 h-4 mr-1" />
+                View
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="flex items-center text-blue-600 hover:text-blue-700 text-sm">
+                <Eye className="w-4 h-4 mr-1" />
+                Review
+              </button>
+              <button className="flex items-center text-green-600 hover:text-green-700 text-sm">
+                <CheckSquare className="w-4 h-4 mr-1" />
+                Accept
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Enhanced Dashboard Component
+const Dashboard = () => {
+  const { user, logout, currentRole, switchRole } = useAuth();
+  const [manuscripts, setManuscripts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showSubmissionForm, setShowSubmissionForm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  useEffect(() => {
+    const loadManuscripts = async () => {
+      setLoading(true);
+      try {
+        const data = await apiService.getManuscripts(user.id, currentRole);
+        setManuscripts(data);
+      } catch (error) {
+        console.error('Failed to load manuscripts:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user) {
+      loadManuscripts();
+    }
+  }, [user, currentRole]);
+
+  const handleRoleSwitch = (newRole) => {
+    switchRole(newRole);
+  };
+
+  const handleManuscriptSubmit = () => {
+    // Refresh manuscripts list
+    apiService.getManuscripts(user.id, currentRole).then(setManuscripts);
+  };
+
+  const filteredManuscripts = manuscripts.filter(manuscript => {
+    const matchesSearch = manuscript.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         manuscript.authors.some(author => author.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesStatus = statusFilter === 'all' || manuscript.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const getStats = () => {
+    if (currentRole === 'publisher') {
+      return {
+        total: manuscripts.length,
+        published: manuscripts.filter(m => m.status === 'published').length,
+        underReview: manuscripts.filter(m => m.status === 'under_review').length,
+        pending: manuscripts.filter(m => m.status === 'pending_review').length
+      };
+    } else {
+      return {
+        total: manuscripts.length,
+        assigned: manuscripts.filter(m => m.status === 'assigned').length,
+        completed: manuscripts.filter(m => m.status === 'published').length,
+        pending: manuscripts.filter(m => m.status === 'pending_review').length
+      };
+    }
+  };
+
+  const stats = getStats();
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <nav className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <BookOpen className="w-8 h-8 text-blue-600 mr-3" />
+              <h1 className="text-xl font-bold text-gray-800">Journal Platform</h1>
+            </div>
+            
+            <div className="flex items-center space-x-6">
+              {/* Role Switcher */}
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => handleRoleSwitch('publisher')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    currentRole === 'publisher'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  Publisher
+                </button>
+                <button
+                  onClick={() => handleRoleSwitch('reviewer')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    currentRole === 'reviewer'
+                      ? 'bg-purple-600 text-white'
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  Reviewer
+                </button>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <span className="text-gray-700">Welcome, {user?.fullName}</span>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  currentRole === 'reviewer' 
+                    ? 'bg-purple-100 text-purple-800' 
+                    : 'bg-blue-100 text-blue-800'
+                }`}>
+                  {currentRole}
+                </span>
+                <button
+                  onClick={logout}
+                  className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-lg p-6 shadow-sm">
+            <div className="flex items-center">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <FileText className="w-6 h-6 text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Manuscripts</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+              </div>
+            </div>
+          </div>
+
+          {currentRole === 'publisher' ? (
+            <>
+              <div className="bg-white rounded-lg p-6 shadow-sm">
+                <div className="flex items-center">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <CheckCircle className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Published</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.published}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-6 shadow-sm">
+                <div className="flex items-center">
+                  <div className="p-2 bg-yellow-100 rounded-lg">
+                    <Clock className="w-6 h-6 text-yellow-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Under Review</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.underReview}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-6 shadow-sm">
+                <div className="flex items-center">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Upload className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Pending</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.pending}</p>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="bg-white rounded-lg p-6 shadow-sm">
+                <div className="flex items-center">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <Users className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Assigned</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.assigned}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-6 shadow-sm">
+                <div className="flex items-center">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <CheckSquare className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Completed</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.completed}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-6 shadow-sm">
+                <div className="flex items-center">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Clock className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-600">Pending</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.pending}</p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Main Content */}
+        <div className="bg-white rounded-lg shadow-sm">
+          {/* Header */}
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {currentRole === 'publisher' ? 'My Manuscripts' : 'Review Assignments'}
+              </h2>
+              
+              {currentRole === 'publisher' && (
+                <button
+                  onClick={() => setShowSubmissionForm(true)}
+                  className="mt-4 sm:mt-0 flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Submit New Manuscript
+                </button>
+              )}
+            </div>
+
+            {/* Search and Filter */}
+            <div className="mt-4 flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search manuscripts..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div className="relative">
+                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">All Status</option>
+                  <option value="published">Published</option>
+                  <option value="under_review">Under Review</option>
+                  <option value="pending_review">Pending Review</option>
+                  {currentRole === 'reviewer' && (
+                    <option value="assigned">Assigned</option>
+                  )}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="p-6">
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading manuscripts...</p>
+              </div>
+            ) : filteredManuscripts.length > 0 ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {filteredManuscripts.map((manuscript) => (
+                  <ManuscriptCard 
+                    key={manuscript.id} 
+                    manuscript={manuscript} 
+                    role={currentRole}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  {currentRole === 'publisher' ? 'No manuscripts yet' : 'No reviews assigned'}
+                </h3>
+                <p className="text-gray-500 mb-4">
+                  {currentRole === 'publisher' 
+                    ? 'Get started by submitting your first manuscript' 
+                    : 'Check back later for new review assignments'
+                  }
+                </p>
+                {currentRole === 'publisher' && (
+                  <button
+                    onClick={() => setShowSubmissionForm(true)}
+                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Submit Manuscript
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Manuscript Submission Modal */}
+      {showSubmissionForm && (
+        <ManuscriptSubmissionForm
+          onClose={() => setShowSubmissionForm(false)}
+          onSubmit={handleManuscriptSubmit}
+        />
+      )}
+    </div>
+  );
 };
 
 // Forgot Password Component
@@ -341,7 +962,7 @@ const ResetPasswordForm = ({ token, onBackToLogin }) => {
   );
 };
 
-// Login Component (Updated with Forgot Password link)
+// Login Component
 const LoginForm = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
   const [formData, setFormData] = useState({
     email: '',
@@ -463,14 +1084,14 @@ const LoginForm = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
   );
 };
 
-// Register Component (unchanged)
+// Register Component
 const RegisterForm = ({ onSwitchToLogin }) => {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'writer',
+    role: 'publisher', // Default to publisher
     bio: '',
     expertise: ''
   });
@@ -613,7 +1234,7 @@ const RegisterForm = ({ onSwitchToLogin }) => {
               onChange={handleChange}
               className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
             >
-              <option value="writer">Writer</option>
+              <option value="publisher">Publisher</option>
               <option value="reviewer">Reviewer</option>
             </select>
           </div>
@@ -665,111 +1286,11 @@ const RegisterForm = ({ onSwitchToLogin }) => {
   );
 };
 
-// Dashboard Component (unchanged)
-const Dashboard = () => {
-  const { user, logout } = useAuth();
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
-      <nav className="bg-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <BookOpen className="w-8 h-8 text-blue-600 mr-3" />
-              <h1 className="text-xl font-bold text-gray-800">Journal Platform</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-gray-700">Welcome, {user?.fullName}</span>
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                user?.role === 'reviewer' 
-                  ? 'bg-purple-100 text-purple-800' 
-                  : 'bg-blue-100 text-blue-800'
-              }`}>
-                {user?.role}
-              </span>
-              <button
-                onClick={logout}
-                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-2xl shadow-lg p-8">
-          <div className="flex items-center mb-6">
-            <CheckCircle className="w-8 h-8 text-green-500 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-800">Authentication Successful!</h2>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-700">User Information</h3>
-              <div className="space-y-2">
-                <p><span className="font-medium">Name:</span> {user?.fullName}</p>
-                <p><span className="font-medium">Email:</span> {user?.email}</p>
-                <p><span className="font-medium">Role:</span> {user?.role}</p>
-                {user?.bio && <p><span className="font-medium">Bio:</span> {user.bio}</p>}
-                {user?.expertise?.length > 0 && (
-                  <div>
-                    <span className="font-medium">Expertise:</span>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {user.expertise.map((exp, index) => (
-                        <span
-                          key={index}
-                          className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm"
-                        >
-                          {exp}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-700">Next Steps</h3>
-              <div className="space-y-2">
-                {user?.role === 'writer' ? (
-                  <div>
-                    <p className="text-gray-600">As a writer, you can:</p>
-                    <ul className="list-disc list-inside mt-2 space-y-1 text-sm text-gray-600">
-                      <li>Submit journal articles for review</li>
-                      <li>View submission status and feedback</li>
-                      <li>Edit and resubmit articles based on reviewer comments</li>
-                      <li>Manage your published articles</li>
-                    </ul>
-                  </div>
-                ) : (
-                  <div>
-                    <p className="text-gray-600">As a reviewer, you can:</p>
-                    <ul className="list-disc list-inside mt-2 space-y-1 text-sm text-gray-600">
-                      <li>Review submitted articles</li>
-                      <li>Provide feedback and comments</li>
-                      <li>Accept, reject, or request revisions</li>
-                      <li>Manage your review assignments</li>
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // Main App Component
 const App = () => {
-  const [currentView, setCurrentView] = useState('login'); // 'login', 'register', 'forgot', 'reset'
+  const [currentView, setCurrentView] = useState('login');
   const [resetToken, setResetToken] = useState('');
 
-  // Simulate URL parsing for reset token (in a real app, you'd use React Router)
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
@@ -802,7 +1323,7 @@ const AuthContent = ({ currentView, setCurrentView, resetToken }) => {
         </div>
       </div>
     );
-  }
+  };
 
   if (user) {
     return <Dashboard />;
