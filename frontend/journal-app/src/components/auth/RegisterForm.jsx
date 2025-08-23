@@ -9,7 +9,6 @@ const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
     password: '',
     confirmPassword: '',
     role: 'publisher',
-    bio: '',
     expertise: ''
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -125,7 +124,7 @@ const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
   const passwordStrength = getPasswordStrength(formData.password);
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-xl mx-auto">
       <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-6 sm:p-8 relative overflow-hidden">
         {/* Background decoration */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-400/20 to-blue-400/20 rounded-full -translate-y-16 translate-x-16"></div>
@@ -165,7 +164,7 @@ const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Full Name and Email in Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Full Name */}
@@ -285,7 +284,7 @@ const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
               </div>
             </div>
 
-            {/* Password Strength and Match Indicators - Combined */}
+            {/* Password Strength and Match Indicators */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               {/* Password Strength Indicator */}
               {formData.password && (
@@ -327,33 +326,17 @@ const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
               )}
             </div>
 
-            {/* Optional Fields - Side by Side */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Bio */}
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Bio (Optional)</label>
-                <textarea
-                  name="bio"
-                  placeholder="Tell us about yourself"
-                  value={formData.bio}
-                  onChange={handleChange}
-                  rows="2"
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white/50 backdrop-blur-sm text-sm resize-none"
-                />
-              </div>
-
-              {/* Expertise */}
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Areas of Expertise (Optional)</label>
-                <input
-                  type="text"
-                  name="expertise"
-                  placeholder="e.g., Machine Learning, Data Science"
-                  value={formData.expertise}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white/50 backdrop-blur-sm text-sm"
-                />
-              </div>
+            {/* Areas of Expertise - Single Field */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Areas of Expertise (Optional)</label>
+              <input
+                type="text"
+                name="expertise"
+                placeholder="e.g., Machine Learning, Data Science"
+                value={formData.expertise}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 bg-white/50 backdrop-blur-sm text-sm"
+              />
             </div>
 
             {/* Submit Button */}
