@@ -309,6 +309,8 @@ router.post('/login', validateLogin, async (req, res) => {
   }
 });
 
+// In your backend/routes/auth.js file, here's the corrected forgot-password route:
+
 // @route   POST /api/auth/forgot-password
 // @desc    Send password reset email
 // @access  Public
@@ -346,23 +348,28 @@ router.post('/forgot-password', validateEmail, async (req, res) => {
     user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; // 1 hour
     
     console.log(`🔄 Saving reset token for user: ${user.email}`);
+    console.log(`🔑 Reset token: ${resetToken}`);
     await user.save();
 
-    // Prepare reset URL
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    // IMPORTANT: Make sure FRONTEND_URL is correctly set
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
+    
+    console.log(`🌐 Frontend URL: ${frontendUrl}`);
     console.log(`🔗 Reset URL generated: ${resetUrl}`);
 
     try {
-      // Send reset email
+      // Send reset email - MAKE SURE TO SEND TO THE CORRECT USER
       console.log(`📧 Attempting to send password reset email to: ${user.email}`);
+      console.log(`👤 User full name: ${user.fullName}`);
       
       const emailResult = await sendEmail({
-        to: user.email,
+        to: user.email, // ← This should be user.email, NOT email from request
         subject: 'Password Reset Request - Journal Platform',
         template: 'passwordReset',
         data: {
           fullName: user.fullName,
-          resetUrl: resetUrl
+          resetUrl: resetUrl // ← This should be the actual reset URL
         }
       });
 
@@ -371,7 +378,9 @@ router.post('/forgot-password', validateEmail, async (req, res) => {
       res.status(200).json({
         success: true,
         message: 'Password reset email sent! Please check your inbox and follow the instructions.',
+        // Only show debug info in development
         debug: process.env.NODE_ENV === 'development' ? {
+          emailSentTo: user.email,
           resetToken: resetToken,
           resetUrl: resetUrl,
           expiresAt: new Date(user.resetPasswordExpires).toISOString()
@@ -403,7 +412,8 @@ router.post('/forgot-password', validateEmail, async (req, res) => {
         return res.status(500).json({
           success: false,
           message: 'Failed to send password reset email. Please try again later.',
-          error: 'EMAIL_SEND_ERROR'
+          error: 'EMAIL_SEND_ERROR',
+          details: process.env.NODE_ENV === 'development' ? emailError.message : undefined
         });
       }
     }

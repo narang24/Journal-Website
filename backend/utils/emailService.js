@@ -18,8 +18,7 @@ const createTransporter = () => {
       pass: process.env.EMAIL_PASS
     },
     tls: {
-      rejectUnauthorized: false,
-      ciphers: 'SSLv3'
+      rejectUnauthorized: false
     },
     // Additional debugging
     debug: process.env.NODE_ENV === 'development',
@@ -32,7 +31,8 @@ const createTransporter = () => {
     throw new Error('Email credentials not configured');
   }
 
-  return nodemailer.createTransporter(transportConfig);
+  // FIX: Use createTransport instead of createTransporter
+  return nodemailer.createTransport(transportConfig);
 };
 
 // Email templates (keeping your existing templates)
