@@ -220,6 +220,9 @@ router.post('/resend-verification', validateEmail, async (req, res) => {
 // @route   POST /api/auth/login
 // @desc    Login user
 // @access  Public
+// @route   POST /api/auth/login
+// @desc    Login user
+// @access  Public
 router.post('/login', validateLogin, async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -229,12 +232,22 @@ router.post('/login', validateLogin, async (req, res) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'No account found with this email. Please sign up first.',
-        action: 'signup'
+        message: 'Invalid credentials. Please check your email and password.',
+        action: 'retry'
       });
     }
 
-    // Check if email is verified
+    // Check password first
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials. Please check your email and password.',
+        action: 'retry'
+      });
+    }
+
+    // Check if email is verified (after password validation for security)
     if (!user.isEmailVerified) {
       return res.status(401).json({
         success: false,
@@ -244,12 +257,12 @@ router.post('/login', validateLogin, async (req, res) => {
       });
     }
 
-    // Check password
-    const isPasswordValid = await user.comparePassword(password);
-    if (!isPasswordValid) {
+    // Check if account is active
+    if (!user.isActive) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid password. Please try again.'
+        message: 'Your account has been deactivated. Please contact support.',
+        action: 'contact'
       });
     }
 
@@ -259,6 +272,23 @@ router.post('/login', validateLogin, async (req, res) => {
 
     // Generate token
     const token = generateToken(user._id);
+
+    // Send welcome back email (optional - you can remove this if you don't want emails on every login)
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Welcome Back - Journal Platform',
+        template: 'loginWelcome',
+        data: {
+          fullName: user.fullName,
+          loginTime: new Date().toLocaleString(),
+          dashboardUrl: `${process.env.FRONTEND_URL}/dashboard`
+        }
+      });
+    } catch (emailError) {
+      // Don't fail login if email fails
+      console.error('Welcome email failed:', emailError);
+    }
 
     // Return user data (password excluded by toJSON method)
     const userData = user.toJSON();

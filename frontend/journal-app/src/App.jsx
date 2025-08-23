@@ -1,103 +1,144 @@
 import React, { useState, useContext, createContext, useEffect } from 'react';
-import { Eye, EyeOff, User, Mail, Lock, PenTool, Shield, BookOpen, CheckCircle, ArrowLeft, FileText, Upload, Settings, Users, Search, Filter, Plus, Edit, Trash2, Clock, CheckSquare, X } from 'lucide-react';
+import { Eye, EyeOff, User, Mail, Lock, PenTool, Shield, BookOpen, CheckCircle, ArrowLeft, FileText, Upload, Settings, Users, Search, Filter, Plus, Edit, Trash2, Clock, CheckSquare, X, AlertTriangle } from 'lucide-react';
 
-// Mock API service for demonstration
+// API Configuration
+const API_BASE_URL = 'http://localhost:8000/api';
+
+// Real API service that connects to your backend
 const apiService = {
-  login: async (formData) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return {
-      user: {
-        id: '1',
-        fullName: 'John Doe',
-        email: formData.email,
-        role: 'publisher', // Default role is now publisher
-        bio: 'Sample bio',
-        expertise: ['React', 'JavaScript']
+  async request(endpoint, options = {}) {
+    const token = localStorage.getItem('token');
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` })
       },
-      token: 'mock-jwt-token'
+      ...options
     };
+
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Handle different error types from backend
+        if (data.action === 'login') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          throw new Error(data.message || 'Authentication required');
+        }
+        if (data.action === 'verify') {
+          throw new Error(data.message || 'Email verification required');
+        }
+        if (data.action === 'signup') {
+          throw new Error(data.message || 'Please sign up first');
+        }
+        throw new Error(data.message || 'Something went wrong');
+      }
+
+      return data;
+    } catch (error) {
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('Unable to connect to server. Please check if the backend is running.');
+      }
+      throw error;
+    }
+  },
+
+  async login(credentials) {
+    const response = await this.request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials)
+    });
+    return response;
   },
   
-  register: async (formData) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return {
-      user: {
-        id: '1',
-        fullName: formData.fullName,
-        email: formData.email,
-        role: 'publisher', // Default role is publisher
-        bio: formData.bio,
-        expertise: formData.expertise.split(',').map(e => e.trim()).filter(e => e)
-      },
-      token: 'mock-jwt-token'
-    };
+  async register(userData) {
+    const response = await this.request('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(userData)
+    });
+    return response;
   },
 
-  forgotPassword: async (email) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return { message: 'Password reset email sent successfully. Please check your inbox.' };
+  async getCurrentUser() {
+    const response = await this.request('/auth/me');
+    return response;
   },
 
-  resetPassword: async (token, password) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return { message: 'Password has been reset successfully.' };
+  async logout() {
+    const response = await this.request('/auth/logout', {
+      method: 'POST'
+    });
+    return response;
   },
 
-  getCurrentUser: async () => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const token = localStorage.getItem('token');
-    if (token) {
-      return {
-        user: {
-          id: '1',
-          fullName: 'John Doe',
-          email: 'john@example.com',
-          role: 'publisher',
-          bio: 'Sample bio',
-          expertise: ['React', 'JavaScript']
-        }
-      };
-    }
-    throw new Error('No token found');
+  async forgotPassword(email) {
+    const response = await this.request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    });
+    return response;
   },
 
-  // New API methods for manuscript management
-  getManuscripts: async (userId, role) => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    // Mock manuscripts data
-    const manuscripts = [
-      {
-        id: 1,
-        title: 'Advanced React Patterns in Modern Web Development',
-        abstract: 'This paper explores advanced React patterns...',
-        status: role === 'publisher' ? 'published' : 'pending_review',
-        submittedDate: '2024-01-15',
-        authors: ['John Doe', 'Jane Smith'],
-        keywords: ['React', 'Web Development', 'JavaScript'],
-        category: 'Computer Science'
-      },
-      {
-        id: 2,
-        title: 'Machine Learning Applications in Healthcare',
-        abstract: 'A comprehensive study on ML applications...',
-        status: role === 'publisher' ? 'under_review' : 'assigned',
-        submittedDate: '2024-01-20',
-        authors: ['Alice Johnson'],
-        keywords: ['Machine Learning', 'Healthcare', 'AI'],
-        category: 'Medical Sciences'
-      }
-    ];
-    return manuscripts;
+  async resetPassword(token, password, confirmPassword) {
+    const response = await this.request(`/auth/reset-password/${token}`, {
+      method: 'POST',
+      body: JSON.stringify({ password, confirmPassword })
+    });
+    return response;
   },
 
-  submitManuscript: async (manuscriptData) => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return { success: true, manuscriptId: Date.now() };
+  async resendVerification(email) {
+    const response = await this.request('/auth/resend-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    });
+    return response;
+  },
+
+  async verifyEmail(token) {
+    const response = await this.request(`/auth/verify-email/${token}`);
+    return response;
+  },
+
+  // Manuscript endpoints
+  async getManuscripts() {
+    const response = await this.request('/manuscripts');
+    return response;
+  },
+
+  async submitManuscript(manuscriptData) {
+    const response = await this.request('/manuscripts', {
+      method: 'POST',
+      body: JSON.stringify(manuscriptData)
+    });
+    return response;
+  },
+
+  // User profile endpoints
+  async getUserProfile() {
+    const response = await this.request('/user/profile');
+    return response;
+  },
+
+  async updateUserProfile(profileData) {
+    const response = await this.request('/user/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData)
+    });
+    return response;
+  },
+
+  async getUserStats() {
+    const response = await this.request('/user/stats');
+    return response;
+  },
+
+  // Health check
+  async healthCheck() {
+    const response = await this.request('/health');
+    return response;
   }
 };
 
@@ -107,7 +148,7 @@ const AuthContext = createContext();
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [currentRole, setCurrentRole] = useState('publisher'); // Default role
+  const [currentRole, setCurrentRole] = useState('publisher');
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -133,14 +174,20 @@ const AuthProvider = ({ children }) => {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
-    setCurrentRole('publisher'); // Default to publisher role
+    setCurrentRole(userData.role);
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
-    setCurrentRole('publisher');
+  const logout = async () => {
+    try {
+      await apiService.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setUser(null);
+      setCurrentRole('publisher');
+    }
   };
 
   const switchRole = (newRole) => {
@@ -162,6 +209,105 @@ const useAuth = () => {
   return context;
 };
 
+// Email Verification Component
+const EmailVerificationForm = ({ email, onResendVerification, onBackToLogin }) => {
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+
+  const handleResendVerification = async () => {
+    if (!email) return;
+    
+    setLoading(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const response = await apiService.resendVerification(email);
+      setMessage(response.message);
+    } catch (err) {
+      setError(err.message || 'Failed to resend verification email');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Check URL for verification token
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    
+    if (token) {
+      const verifyEmail = async () => {
+        try {
+          const response = await apiService.verifyEmail(token);
+          setMessage(response.message);
+          // Clear the URL parameter
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } catch (error) {
+          setError(error.message || 'Email verification failed');
+        }
+      };
+      
+      verifyEmail();
+    }
+  }, []);
+
+  return (
+    <div className="w-full max-w-md mx-auto">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 border border-gray-100">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Mail className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-3xl font-bold text-gray-800">Verify Your Email</h2>
+          <p className="text-gray-600 mt-2">Check your inbox for a verification link</p>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-6">
+            {error}
+          </div>
+        )}
+
+        {message && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm mb-6">
+            {message}
+          </div>
+        )}
+
+        <div className="text-center space-y-4">
+          {email && (
+            <p className="text-gray-600">
+              We sent a verification link to: <strong>{email}</strong>
+            </p>
+          )}
+          
+          <div className="space-y-3">
+            {email && (
+              <button
+                onClick={handleResendVerification}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-3 rounded-lg font-semibold hover:from-yellow-600 hover:to-orange-600 transition-all duration-200 disabled:opacity-50"
+              >
+                {loading ? 'Sending...' : 'Resend Verification Email'}
+              </button>
+            )}
+            
+            <button
+              onClick={onBackToLogin}
+              className="w-full flex items-center justify-center text-gray-600 hover:text-gray-700 font-semibold"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Sign In
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Manuscript Submission Form
 const ManuscriptSubmissionForm = ({ onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
@@ -173,6 +319,7 @@ const ManuscriptSubmissionForm = ({ onClose, onSubmit }) => {
     file: null
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -180,11 +327,13 @@ const ManuscriptSubmissionForm = ({ onClose, onSubmit }) => {
       ...prev,
       [name]: files ? files[0] : value
     }));
+    setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
     
     try {
       const manuscriptData = {
@@ -199,6 +348,7 @@ const ManuscriptSubmissionForm = ({ onClose, onSubmit }) => {
       onClose();
     } catch (error) {
       console.error('Submission failed:', error);
+      setError(error.message || 'Failed to submit manuscript');
     } finally {
       setLoading(false);
     }
@@ -213,6 +363,12 @@ const ManuscriptSubmissionForm = ({ onClose, onSubmit }) => {
             <X className="w-6 h-6" />
           </button>
         </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-6">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
@@ -425,26 +581,35 @@ const ManuscriptCard = ({ manuscript, role }) => {
 const Dashboard = () => {
   const { user, logout, currentRole, switchRole } = useAuth();
   const [manuscripts, setManuscripts] = useState([]);
+  const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [showSubmissionForm, setShowSubmissionForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const loadManuscripts = async () => {
+    const loadDashboardData = async () => {
       setLoading(true);
+      setError('');
       try {
-        const data = await apiService.getManuscripts(user.id, currentRole);
-        setManuscripts(data);
+        const [manuscriptsResponse, statsResponse] = await Promise.all([
+          apiService.getManuscripts(),
+          apiService.getUserStats()
+        ]);
+        
+        setManuscripts(manuscriptsResponse.manuscripts || []);
+        setStats(statsResponse.stats || {});
       } catch (error) {
-        console.error('Failed to load manuscripts:', error);
+        console.error('Failed to load dashboard data:', error);
+        setError(error.message);
       } finally {
         setLoading(false);
       }
     };
 
     if (user) {
-      loadManuscripts();
+      loadDashboardData();
     }
   }, [user, currentRole]);
 
@@ -452,9 +617,18 @@ const Dashboard = () => {
     switchRole(newRole);
   };
 
-  const handleManuscriptSubmit = () => {
-    // Refresh manuscripts list
-    apiService.getManuscripts(user.id, currentRole).then(setManuscripts);
+  const handleManuscriptSubmit = async () => {
+    try {
+      const [manuscriptsResponse, statsResponse] = await Promise.all([
+        apiService.getManuscripts(),
+        apiService.getUserStats()
+      ]);
+      
+      setManuscripts(manuscriptsResponse.manuscripts || []);
+      setStats(statsResponse.stats || {});
+    } catch (error) {
+      console.error('Failed to refresh data:', error);
+    }
   };
 
   const filteredManuscripts = manuscripts.filter(manuscript => {
@@ -464,25 +638,16 @@ const Dashboard = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const getStats = () => {
-    if (currentRole === 'publisher') {
-      return {
-        total: manuscripts.length,
-        published: manuscripts.filter(m => m.status === 'published').length,
-        underReview: manuscripts.filter(m => m.status === 'under_review').length,
-        pending: manuscripts.filter(m => m.status === 'pending_review').length
-      };
-    } else {
-      return {
-        total: manuscripts.length,
-        assigned: manuscripts.filter(m => m.status === 'assigned').length,
-        completed: manuscripts.filter(m => m.status === 'published').length,
-        pending: manuscripts.filter(m => m.status === 'pending_review').length
-      };
-    }
-  };
-
-  const stats = getStats();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -541,6 +706,15 @@ const Dashboard = () => {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+            <div className="flex items-center">
+              <AlertTriangle className="w-5 h-5 mr-2" />
+              {error}
+            </div>
+          </div>
+        )}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg p-6 shadow-sm">
@@ -550,7 +724,7 @@ const Dashboard = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Manuscripts</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.totalManuscripts || 0}</p>
               </div>
             </div>
           </div>
@@ -564,7 +738,7 @@ const Dashboard = () => {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Published</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.published}</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.publishedManuscripts || 0}</p>
                   </div>
                 </div>
               </div>
@@ -576,7 +750,7 @@ const Dashboard = () => {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Under Review</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.underReview}</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.underReview || 0}</p>
                   </div>
                 </div>
               </div>
@@ -588,7 +762,7 @@ const Dashboard = () => {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Pending</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.pending}</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.pendingReviews || 0}</p>
                   </div>
                 </div>
               </div>
@@ -601,8 +775,8 @@ const Dashboard = () => {
                     <Users className="w-6 h-6 text-purple-600" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Assigned</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.assigned}</p>
+                    <p className="text-sm font-medium text-gray-600">Total Reviews</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.totalReviews || 0}</p>
                   </div>
                 </div>
               </div>
@@ -614,7 +788,7 @@ const Dashboard = () => {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Completed</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.completed}</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.completedReviews || 0}</p>
                   </div>
                 </div>
               </div>
@@ -626,7 +800,7 @@ const Dashboard = () => {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Pending</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.pending}</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.pendingReviews || 0}</p>
                   </div>
                 </div>
               </div>
@@ -688,12 +862,7 @@ const Dashboard = () => {
 
           {/* Content */}
           <div className="p-6">
-            {loading ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading manuscripts...</p>
-              </div>
-            ) : filteredManuscripts.length > 0 ? (
+            {filteredManuscripts.length > 0 ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {filteredManuscripts.map((manuscript) => (
                   <ManuscriptCard 
@@ -854,14 +1023,14 @@ const ResetPasswordForm = ({ token, onBackToLogin }) => {
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long');
       setLoading(false);
       return;
     }
 
     try {
-      const response = await apiService.resetPassword(token, formData.password);
+      const response = await apiService.resetPassword(token, formData.password, formData.confirmPassword);
       setMessage(response.message);
     } catch (err) {
       setError(err.message || 'Failed to reset password. Please try again.');
@@ -963,7 +1132,7 @@ const ResetPasswordForm = ({ token, onBackToLogin }) => {
 };
 
 // Login Component
-const LoginForm = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
+const LoginForm = ({ onSwitchToRegister, onSwitchToForgotPassword, onSwitchToEmailVerification }) => {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -992,6 +1161,11 @@ const LoginForm = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
       login(response.user, response.token);
     } catch (err) {
       setError(err.message || 'Login failed. Please try again.');
+      
+      // If error is about email verification, show verification form
+      if (err.message.includes('verify your email') || err.message.includes('verification')) {
+        onSwitchToEmailVerification(formData.email);
+      }
     } finally {
       setLoading(false);
     }
@@ -1085,21 +1259,20 @@ const LoginForm = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
 };
 
 // Register Component
-const RegisterForm = ({ onSwitchToLogin }) => {
+const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'publisher', // Default to publisher
+    role: 'publisher',
     bio: '',
     expertise: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const { login } = useAuth();
+  const [validationErrors, setValidationErrors] = useState([]);
 
   const handleChange = (e) => {
     setFormData({
@@ -1107,12 +1280,14 @@ const RegisterForm = ({ onSwitchToLogin }) => {
       [e.target.name]: e.target.value
     });
     setError('');
+    setValidationErrors([]);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setValidationErrors([]);
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
@@ -1120,26 +1295,18 @@ const RegisterForm = ({ onSwitchToLogin }) => {
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      setLoading(false);
-      return;
-    }
-
     try {
-      const registrationData = {
-        fullName: formData.fullName,
-        email: formData.email,
-        password: formData.password,
-        role: formData.role,
-        bio: formData.bio,
-        expertise: formData.expertise
-      };
-
-      const response = await apiService.register(registrationData);
-      login(response.user, response.token);
+      const response = await apiService.register(formData);
+      // Registration successful, show email verification
+      onSwitchToEmailVerification(formData.email);
     } catch (err) {
-      setError(err.message || 'Registration failed. Please try again.');
+      if (err.message.includes('validation errors') && err.errors) {
+        setValidationErrors(err.errors);
+      } else if (err.message.includes('verify your email') || err.message.includes('verification')) {
+        onSwitchToEmailVerification(formData.email);
+      } else {
+        setError(err.message || 'Registration failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -1160,6 +1327,17 @@ const RegisterForm = ({ onSwitchToLogin }) => {
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
               {error}
+            </div>
+          )}
+
+          {validationErrors.length > 0 && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+              <p className="font-semibold mb-2">Please fix the following errors:</p>
+              <ul className="list-disc list-inside space-y-1">
+                {validationErrors.map((error, index) => (
+                  <li key={index}>{error.message}</li>
+                ))}
+              </ul>
             </div>
           )}
 
@@ -1197,7 +1375,7 @@ const RegisterForm = ({ onSwitchToLogin }) => {
               <input
                 type={showPassword ? 'text' : 'password'}
                 name="password"
-                placeholder="Password"
+                placeholder="Password (min 8 chars)"
                 value={formData.password}
                 onChange={handleChange}
                 className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
@@ -1290,6 +1468,7 @@ const RegisterForm = ({ onSwitchToLogin }) => {
 const App = () => {
   const [currentView, setCurrentView] = useState('login');
   const [resetToken, setResetToken] = useState('');
+  const [verificationEmail, setVerificationEmail] = useState('');
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -1300,18 +1479,25 @@ const App = () => {
     }
   }, []);
 
+  const handleSwitchToEmailVerification = (email) => {
+    setVerificationEmail(email);
+    setCurrentView('emailVerification');
+  };
+
   return (
     <AuthProvider>
       <AuthContent 
         currentView={currentView} 
         setCurrentView={setCurrentView}
         resetToken={resetToken}
+        verificationEmail={verificationEmail}
+        onSwitchToEmailVerification={handleSwitchToEmailVerification}
       />
     </AuthProvider>
   );
 };
 
-const AuthContent = ({ currentView, setCurrentView, resetToken }) => {
+const AuthContent = ({ currentView, setCurrentView, resetToken, verificationEmail, onSwitchToEmailVerification }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -1334,7 +1520,8 @@ const AuthContent = ({ currentView, setCurrentView, resetToken }) => {
       case 'register':
         return (
           <RegisterForm 
-            onSwitchToLogin={() => setCurrentView('login')} 
+            onSwitchToLogin={() => setCurrentView('login')}
+            onSwitchToEmailVerification={onSwitchToEmailVerification}
           />
         );
       case 'forgot':
@@ -1350,11 +1537,20 @@ const AuthContent = ({ currentView, setCurrentView, resetToken }) => {
             onBackToLogin={() => setCurrentView('login')} 
           />
         );
+      case 'emailVerification':
+        return (
+          <EmailVerificationForm
+            email={verificationEmail}
+            onResendVerification={() => {}}
+            onBackToLogin={() => setCurrentView('login')}
+          />
+        );
       default:
         return (
           <LoginForm 
             onSwitchToRegister={() => setCurrentView('register')}
             onSwitchToForgotPassword={() => setCurrentView('forgot')}
+            onSwitchToEmailVerification={onSwitchToEmailVerification}
           />
         );
     }

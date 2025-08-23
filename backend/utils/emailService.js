@@ -289,7 +289,68 @@ const emailTemplates = {
       </body>
       </html>
     `
-  })
+  }),
+
+  loginWelcome: (data) => ({
+  subject: '👋 Welcome Back to Journal Platform!',
+  html: `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Welcome Back</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f8fafc; }
+            .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+            .header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 40px 30px; text-align: center; }
+            .header h1 { font-size: 28px; margin-bottom: 8px; font-weight: 600; }
+            .content { padding: 40px 30px; }
+            .greeting { font-size: 18px; margin-bottom: 20px; color: #1f2937; }
+            .message { font-size: 16px; margin-bottom: 25px; color: #4b5563; line-height: 1.8; }
+            .login-info { background-color: #f3f4f6; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid #6366f1; }
+            .login-info p { margin: 5px 0; font-size: 14px; color: #374151; }
+            .login-info strong { color: #1f2937; }
+            .cta-button { display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; transition: transform 0.2s; margin: 20px 0; }
+            .cta-button:hover { transform: translateY(-2px); }
+            .footer { background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb; }
+            .footer p { color: #6b7280; font-size: 14px; }
+            @media (max-width: 600px) { .container { margin: 10px; } .header, .content, .footer { padding: 20px; } }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>👋 Welcome Back!</h1>
+            </div>
+            <div class="content">
+                <div class="greeting">Hello ${data.fullName},</div>
+                <div class="message">
+                    Great to see you again! You've successfully logged into your Journal Platform account.
+                    <br><br>
+                    Ready to continue your research journey?
+                </div>
+                
+                <div class="login-info">
+                    <p><strong>Login Details:</strong></p>
+                    <p><strong>Time:</strong> ${data.loginTime}</p>
+                    <p><strong>Account:</strong> ${data.fullName}</p>
+                </div>
+
+                <div style="text-align: center;">
+                    <a href="${data.dashboardUrl}" class="cta-button">Go to Dashboard</a>
+                </div>
+            </div>
+            <div class="footer">
+                <p><strong>Journal Platform Team</strong></p>
+                <p>Continue making great discoveries!</p>
+            </div>
+        </div>
+    </body>
+    </html>
+  `
+  }),
 };
 
 // Main send email function
