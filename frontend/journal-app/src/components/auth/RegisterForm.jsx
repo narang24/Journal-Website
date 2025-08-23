@@ -26,14 +26,63 @@ const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
     setValidationErrors([]);
   };
 
+  const validateForm = () => {
+    const errors = [];
+
+    // Full name validation
+    if (!formData.fullName.trim()) {
+      errors.push({ field: 'fullName', message: 'Full name is required' });
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email.trim()) {
+      errors.push({ field: 'email', message: 'Email is required' });
+    } else if (!emailRegex.test(formData.email)) {
+      errors.push({ field: 'email', message: 'Please enter a valid email address' });
+    }
+
+    // Password validation
+    if (!formData.password) {
+      errors.push({ field: 'password', message: 'Password is required' });
+    } else {
+      if (formData.password.length < 8) {
+        errors.push({ field: 'password', message: 'Password must be at least 8 characters long' });
+      }
+      if (!/(?=.*[a-z])/.test(formData.password)) {
+        errors.push({ field: 'password', message: 'Password must contain at least one lowercase letter' });
+      }
+      if (!/(?=.*[A-Z])/.test(formData.password)) {
+        errors.push({ field: 'password', message: 'Password must contain at least one uppercase letter' });
+      }
+      if (!/(?=.*\d)/.test(formData.password)) {
+        errors.push({ field: 'password', message: 'Password must contain at least one number' });
+      }
+      if (!/(?=.*[!@#$%^&*(),.?":{}|<>])/.test(formData.password)) {
+        errors.push({ field: 'password', message: 'Password must contain at least one special character (!@#$%^&*(),.?":{}|<>)' });
+      }
+    }
+
+    // Confirm password validation
+    if (!formData.confirmPassword) {
+      errors.push({ field: 'confirmPassword', message: 'Please confirm your password' });
+    } else if (formData.password !== formData.confirmPassword) {
+      errors.push({ field: 'confirmPassword', message: 'Passwords do not match' });
+    }
+
+    return errors;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     setValidationErrors([]);
 
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+    // Client-side validation
+    const clientErrors = validateForm();
+    if (clientErrors.length > 0) {
+      setValidationErrors(clientErrors);
       setLoading(false);
       return;
     }
@@ -44,6 +93,7 @@ const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
       onSwitchToEmailVerification(formData.email);
     } catch (err) {
       if (err.message.includes('validation errors') && err.errors) {
+        // Server validation errors
         setValidationErrors(err.errors);
       } else if (err.message.includes('verify your email') || err.message.includes('verification')) {
         onSwitchToEmailVerification(formData.email);
@@ -53,6 +103,14 @@ const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getFieldError = (fieldName) => {
+    return validationErrors.find(error => error.field === fieldName);
+  };
+
+  const hasFieldError = (fieldName) => {
+    return validationErrors.some(error => error.field === fieldName);
   };
 
   return (
@@ -75,12 +133,15 @@ const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
 
           {validationErrors.length > 0 && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-              <p className="font-semibold mb-2">Please fix the following errors:</p>
-              <ul className="list-disc list-inside space-y-1">
+              <p className="font-semibold mb-2">Please fix the following validation errors:</p>
+              <div className="space-y-1 max-h-40 overflow-y-auto">
                 {validationErrors.map((error, index) => (
-                  <li key={index}>{error.message}</li>
+                  <div key={index} className="flex items-start">
+                    <span className="text-red-500 mr-2">•</span>
+                    <span className="text-sm leading-relaxed">{error.message}</span>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
 
@@ -93,9 +154,14 @@ const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
                 placeholder="Full Name"
                 value={formData.fullName}
                 onChange={handleChange}
-                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                className={`w-full pl-12 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
+                  hasFieldError('fullName') ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
                 required
               />
+              {getFieldError('fullName') && (
+                <p className="mt-1 text-xs text-red-600">{getFieldError('fullName').message}</p>
+              )}
             </div>
 
             <div className="relative">
@@ -106,9 +172,14 @@ const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
                 placeholder="Email address"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                className={`w-full pl-12 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
+                  hasFieldError('email') ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
                 required
               />
+              {getFieldError('email') && (
+                <p className="mt-1 text-xs text-red-600">{getFieldError('email').message}</p>
+              )}
             </div>
           </div>
 
@@ -118,10 +189,12 @@ const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
               <input
                 type={showPassword ? 'text' : 'password'}
                 name="password"
-                placeholder="Password (min 8 chars)"
+                placeholder="Password"
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full pl-12 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                className={`w-full pl-12 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
+                  hasFieldError('password') ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
                 required
               />
               <button
@@ -141,10 +214,39 @@ const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
                 placeholder="Confirm Password"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                className={`w-full pl-12 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
+                  hasFieldError('confirmPassword') ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
                 required
               />
             </div>
+          </div>
+
+          {/* Password Requirements Help Text */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 className="text-sm font-medium text-blue-800 mb-2">Password Requirements:</h4>
+            <ul className="text-xs text-blue-700 space-y-1">
+              <li className="flex items-center">
+                <span className="mr-2">{formData.password.length >= 8 ? '✅' : '❌'}</span>
+                At least 8 characters long
+              </li>
+              <li className="flex items-center">
+                <span className="mr-2">{/(?=.*[a-z])/.test(formData.password) ? '✅' : '❌'}</span>
+                One lowercase letter (a-z)
+              </li>
+              <li className="flex items-center">
+                <span className="mr-2">{/(?=.*[A-Z])/.test(formData.password) ? '✅' : '❌'}</span>
+                One uppercase letter (A-Z)
+              </li>
+              <li className="flex items-center">
+                <span className="mr-2">{/(?=.*\d)/.test(formData.password) ? '✅' : '❌'}</span>
+                One number (0-9)
+              </li>
+              <li className="flex items-center">
+                <span className="mr-2">{/(?=.*[!@#$%^&*(),.?":{}|<>])/.test(formData.password) ? '✅' : '❌'}</span>
+                One special character (!@#$%^&*(),.?":{}|&lt;&gt;)
+              </li>
+            </ul>
           </div>
 
           <div className="relative">

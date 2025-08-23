@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import apiService from '../services/apiService';
 
 const AuthContext = createContext();
@@ -33,6 +34,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
     setCurrentRole(userData.role);
+    // Navigation will be handled automatically by the ProtectedRoute component
   };
 
   const logout = async () => {
@@ -45,6 +47,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('user');
       setUser(null);
       setCurrentRole('publisher');
+      // Navigation will be handled automatically by the PublicRoute component
     }
   };
 
