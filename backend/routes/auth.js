@@ -29,24 +29,44 @@ router.post('/register', validateRegister, async (req, res) => {
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
       if (existingUser.isEmailVerified) {
-        return res.status(400).json({
+        // User exists and is verified - redirect to login
+        return res.status(409).json({
           success: false,
-          message: 'An account with this email already exists. Please login instead.',
-          action: 'login'
+          message: 'An account with this email already exists.',
+          action: 'login',
+          details: {
+            email: existingUser.email,
+            accountStatus: 'verified',
+            suggestion: 'Please sign in with your existing account. If you forgot your password, use the "Forgot Password" option.'
+          }
         });
       } else {
-        // User exists but email not verified, resend verification email
+        // User exists but email not verified
+        // Option 1: Update existing unverified account with new details (recommended)
+        // Option 2: Just resend verification (current behavior)
+        
+        // Let's implement Option 1 - Update the existing unverified account
+        existingUser.fullName = fullName;
+        existingUser.password = password; // This will be hashed by the pre-save hook
+        existingUser.role = role || 'publisher';
+        existingUser.bio = bio || '';
+        existingUser.expertise = expertise ? 
+          expertise.split(',').map(exp => exp.trim()).filter(exp => exp) : 
+          [];
+
+        // Generate new verification token
         const verificationToken = generateVerificationToken();
         existingUser.emailVerificationToken = verificationToken;
         existingUser.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+
         await existingUser.save();
 
         // Send verification email
         const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
         await sendEmail({
           to: existingUser.email,
-          subject: 'Verify Your Email - Journal Platform',
-          template: 'emailVerification',
+          subject: 'Complete Your Account Setup - Journal Platform',
+          template: 'emailVerification', // Using existing template for now
           data: {
             fullName: existingUser.fullName,
             verificationUrl
@@ -55,8 +75,13 @@ router.post('/register', validateRegister, async (req, res) => {
 
         return res.status(200).json({
           success: true,
-          message: 'Verification email resent! Please check your email to verify your account.',
-          email: existingUser.email
+          message: 'Account details updated! Please verify your email to complete the setup.',
+          action: 'verify',
+          details: {
+            email: existingUser.email,
+            accountStatus: 'unverified',
+            suggestion: 'We\'ve updated your account information and sent a new verification email. Please check your inbox.'
+          }
         });
       }
     }
@@ -98,14 +123,20 @@ router.post('/register', validateRegister, async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Account created successfully! Please check your email to verify your account.',
-      email: user.email
+      action: 'verify',
+      details: {
+        email: user.email,
+        accountStatus: 'created',
+        suggestion: 'Check your email inbox (and spam folder) for the verification link.'
+      }
     });
 
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error during registration. Please try again.'
+      message: 'Server error during registration. Please try again.',
+      action: 'retry'
     });
   }
 });
@@ -314,6 +345,9 @@ router.post('/login', validateLogin, async (req, res) => {
 // @route   POST /api/auth/forgot-password
 // @desc    Send password reset email
 // @access  Public
+// @route   POST /api/auth/forgot-password
+// @desc    Send password reset email
+// @access  Public
 router.post('/forgot-password', validateEmail, async (req, res) => {
   try {
     const { email } = req.body;
@@ -321,25 +355,28 @@ router.post('/forgot-password', validateEmail, async (req, res) => {
     console.log(`🔍 Password reset requested for email: ${email}`);
 
     const user = await User.findOne({ email: email.toLowerCase() });
+    
+    // SECURITY FIX: Always return the same response regardless of whether user exists
+    // This prevents email enumeration attacks
+    const standardResponse = {
+      success: true,
+      message: 'If an account with that email exists, you will receive a password reset email shortly.',
+    };
+
     if (!user) {
-      console.log(`❌ No user found with email: ${email}`);
-      return res.status(404).json({
-        success: false,
-        message: 'No account found with that email address.',
-        action: 'signup'
-      });
+      console.log(`❌ No user found with email: ${email} - but returning success response for security`);
+      // Return success response even when user doesn't exist
+      // This prevents attackers from discovering valid email addresses
+      return res.status(200).json(standardResponse);
     }
 
     console.log(`✅ User found: ${user.fullName} (${user.email})`);
 
     if (!user.isEmailVerified) {
-      console.log(`❌ User email not verified: ${email}`);
-      return res.status(400).json({
-        success: false,
-        message: 'Please verify your email first before resetting password.',
-        action: 'verify',
-        email: user.email
-      });
+      console.log(`❌ User email not verified: ${email} - but returning success response for security`);
+      // Even for unverified emails, return success response for security
+      // The user won't actually receive the email, but attacker won't know
+      return res.status(200).json(standardResponse);
     }
 
     // Generate reset token
@@ -359,17 +396,17 @@ router.post('/forgot-password', validateEmail, async (req, res) => {
     console.log(`🔗 Reset URL generated: ${resetUrl}`);
 
     try {
-      // Send reset email - MAKE SURE TO SEND TO THE CORRECT USER
+      // Send reset email - ONLY for verified users who actually exist
       console.log(`📧 Attempting to send password reset email to: ${user.email}`);
       console.log(`👤 User full name: ${user.fullName}`);
       
       const emailResult = await sendEmail({
-        to: user.email, // ← This should be user.email, NOT email from request
+        to: user.email,
         subject: 'Password Reset Request - Journal Platform',
         template: 'passwordReset',
         data: {
           fullName: user.fullName,
-          resetUrl: resetUrl // ← This should be the actual reset URL
+          resetUrl: resetUrl
         }
       });
 
@@ -377,7 +414,7 @@ router.post('/forgot-password', validateEmail, async (req, res) => {
 
       res.status(200).json({
         success: true,
-        message: 'Password reset email sent! Please check your inbox and follow the instructions.',
+        message: 'If an account with that email exists, you will receive a password reset email shortly.',
         // Only show debug info in development
         debug: process.env.NODE_ENV === 'development' ? {
           emailSentTo: user.email,
@@ -395,35 +432,30 @@ router.post('/forgot-password', validateEmail, async (req, res) => {
       user.resetPasswordExpires = undefined;
       await user.save();
 
-      // Return more specific error based on email error
-      if (emailError.message.includes('Invalid login')) {
-        return res.status(500).json({
-          success: false,
-          message: 'Email service configuration error. Please contact support.',
-          error: 'SMTP_AUTH_ERROR'
-        });
-      } else if (emailError.message.includes('connection')) {
-        return res.status(500).json({
-          success: false,
-          message: 'Unable to connect to email service. Please try again later.',
-          error: 'SMTP_CONNECTION_ERROR'
-        });
-      } else {
-        return res.status(500).json({
-          success: false,
-          message: 'Failed to send password reset email. Please try again later.',
+      // SECURITY: Even if email fails, return success response
+      // Log the error for debugging, but don't reveal to user that email failed
+      res.status(200).json({
+        success: true,
+        message: 'If an account with that email exists, you will receive a password reset email shortly.',
+        // Only show error details in development
+        debug: process.env.NODE_ENV === 'development' ? {
           error: 'EMAIL_SEND_ERROR',
-          details: process.env.NODE_ENV === 'development' ? emailError.message : undefined
-        });
-      }
+          details: emailError.message
+        } : undefined
+      });
     }
 
   } catch (error) {
     console.error('❌ Forgot password error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while processing password reset request. Please try again.',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    
+    // Even on server error, don't reveal details to prevent information disclosure
+    res.status(200).json({
+      success: true,
+      message: 'If an account with that email exists, you will receive a password reset email shortly.',
+      debug: process.env.NODE_ENV === 'development' ? {
+        error: 'SERVER_ERROR',
+        details: error.message
+      } : undefined
     });
   }
 });

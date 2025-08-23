@@ -22,6 +22,16 @@ const apiService = {
         if (data.action === 'login') {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
+          
+          // For registration conflicts, throw structured error
+          if (response.status === 409 && data.details) {
+            const error = new Error(JSON.stringify(data));
+            error.statusCode = response.status;
+            error.action = data.action;
+            error.details = data.details;
+            throw error;
+          }
+          
           throw new Error(data.message || 'Authentication required');
         }
         if (data.action === 'verify') {
@@ -30,6 +40,14 @@ const apiService = {
         if (data.action === 'signup') {
           throw new Error(data.message || 'Please sign up first');
         }
+        
+        // Handle validation errors
+        if (data.errors && Array.isArray(data.errors)) {
+          const error = new Error(data.message || 'Validation failed');
+          error.errors = data.errors;
+          throw error;
+        }
+        
         throw new Error(data.message || 'Something went wrong');
       }
 
@@ -51,11 +69,29 @@ const apiService = {
   },
   
   async register(userData) {
-    const response = await this.request('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(userData)
-    });
-    return response;
+    try {
+      const response = await this.request('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(userData)
+      });
+      return response;
+    } catch (error) {
+      // Handle structured errors (like account exists)
+      if (error.message.startsWith('{')) {
+        try {
+          const errorData = JSON.parse(error.message);
+          const structuredError = new Error(errorData.message);
+          structuredError.action = errorData.action;
+          structuredError.details = errorData.details;
+          structuredError.statusCode = error.statusCode;
+          throw structuredError;
+        } catch {
+          // If JSON parsing fails, throw original error
+          throw error;
+        }
+      }
+      throw error;
+    }
   },
 
   async getCurrentUser() {

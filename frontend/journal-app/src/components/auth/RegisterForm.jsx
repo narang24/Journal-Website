@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, User, Mail, Lock, Shield, ArrowRight, Loader, Check, X } from 'lucide-react';
+import { Eye, EyeOff, User, Mail, Lock, Shield, ArrowRight, Loader, Check, X, AlertCircle, UserCheck, LogIn } from 'lucide-react';
 import apiService from '../../services/apiService';
 
 const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
@@ -15,7 +15,9 @@ const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [validationErrors, setValidationErrors] = useState([]);
+  const [existingUserInfo, setExistingUserInfo] = useState(null);
 
   const handleChange = (e) => {
     setFormData({
@@ -23,7 +25,9 @@ const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
       [e.target.name]: e.target.value
     });
     setError('');
+    setMessage('');
     setValidationErrors([]);
+    setExistingUserInfo(null);
   };
 
   const getPasswordStrength = (password) => {
@@ -85,7 +89,9 @@ const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setMessage('');
     setValidationErrors([]);
+    setExistingUserInfo(null);
 
     // Client-side validation
     const clientErrors = validateForm();
@@ -97,11 +103,30 @@ const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
 
     try {
       const response = await apiService.register(formData);
-      // Registration successful, show email verification
-      onSwitchToEmailVerification(formData.email);
+      
+      if (response.success) {
+        setMessage(response.message);
+        
+        // Handle different actions based on account status
+        if (response.action === 'verify') {
+          // Auto redirect to verification page after a short delay
+          setTimeout(() => {
+            onSwitchToEmailVerification(formData.email);
+          }, 2000);
+        }
+      }
+      
     } catch (err) {
+      console.log('Registration error:', err);
+      
+      // Handle structured errors (account exists)
+      if (err.action === 'login' && err.details) {
+        setExistingUserInfo(err.details);
+        return;
+      }
+      
+      // Handle validation errors
       if (err.message.includes('validation errors') && err.errors) {
-        // Server validation errors
         setValidationErrors(err.errors);
       } else if (err.message.includes('verify your email') || err.message.includes('verification')) {
         onSwitchToEmailVerification(formData.email);
@@ -123,6 +148,95 @@ const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
 
   const passwordStrength = getPasswordStrength(formData.password);
 
+  // If we received info about an existing user account
+  if (existingUserInfo) {
+    return (
+      <div className="w-full max-w-lg mx-auto">
+        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-6 sm:p-8 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-indigo-400/20 rounded-full -translate-y-16 translate-x-16"></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-purple-400/20 to-blue-400/20 rounded-full translate-y-12 -translate-x-12"></div>
+          
+          <div className="relative z-10 text-center space-y-6">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl shadow-lg">
+              <UserCheck className="w-10 h-10 text-white" />
+            </div>
+            
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800 mb-2">Account Already Exists</h1>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-left mb-4">
+                <p className="text-sm text-blue-700 mb-2">
+                  <strong>Email:</strong> {existingUserInfo.email}
+                </p>
+                <p className="text-sm text-blue-700 mb-3">
+                  <strong>Status:</strong> {existingUserInfo.accountStatus === 'verified' ? '✅ Verified Account' : '⏳ Pending Verification'}
+                </p>
+                <p className="text-xs text-blue-600">
+                  {existingUserInfo.suggestion}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={onSwitchToLogin}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 transform hover:scale-[1.02] shadow-lg text-sm flex items-center justify-center"
+              >
+                <LogIn className="w-4 h-4 mr-2" />
+                Sign In to Existing Account
+              </button>
+              
+              <button
+                onClick={() => {
+                  setExistingUserInfo(null);
+                  setError('');
+                  setFormData({ ...formData, email: '' }); // Clear email to try different one
+                }}
+                className="w-full border border-gray-300 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-50 transition-all duration-200 text-sm"
+              >
+                Try Different Email
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Success message display
+  if (message && !error) {
+    return (
+      <div className="w-full max-w-lg mx-auto">
+        <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-6 sm:p-8 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-400/20 to-emerald-400/20 rounded-full -translate-y-16 translate-x-16"></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-teal-400/20 to-green-400/20 rounded-full translate-y-12 -translate-x-12"></div>
+          
+          <div className="relative z-10 text-center space-y-6">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl shadow-lg animate-pulse">
+              <Check className="w-10 h-10 text-white" />
+            </div>
+            
+            <div>
+              <h1 className="text-2xl font-bold text-green-800 mb-2">Registration Successful!</h1>
+              <div className="bg-green-50 border border-green-200 text-green-700 p-4 rounded-xl text-sm mb-4">
+                <p className="font-semibold mb-2">{message}</p>
+                <p>Redirecting you to verify your email...</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => onSwitchToEmailVerification(formData.email)}
+              className="inline-flex items-center px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all duration-200 transform hover:scale-[1.02] shadow-lg font-semibold text-sm"
+            >
+              Continue to Email Verification
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Regular registration form
   return (
     <div className="w-full max-w-xl mx-auto">
       <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-6 sm:p-8 relative overflow-hidden">
@@ -144,8 +258,9 @@ const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
 
           {/* Error Messages */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
-              {error}
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-start">
+              <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
+              <div>{error}</div>
             </div>
           )}
 
@@ -155,7 +270,7 @@ const RegisterForm = ({ onSwitchToLogin, onSwitchToEmailVerification }) => {
               <div className="space-y-1 max-h-24 overflow-y-auto">
                 {validationErrors.map((error, index) => (
                   <div key={index} className="flex items-start">
-                    <span className="text-red-500 mr-2">•</span>
+                    <X className="w-3 h-3 mr-2 flex-shrink-0 mt-0.5" />
                     <span className="text-xs leading-tight">{error.message}</span>
                   </div>
                 ))}
