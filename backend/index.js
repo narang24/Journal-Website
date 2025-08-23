@@ -29,6 +29,73 @@ db.once('open', () => {
   console.log('Connected to MongoDB');
 });
 
+// Add this to your backend/index.js file after the MongoDB connection
+
+const { testEmailConnection } = require('./utils/emailService');
+
+// Test email service on startup
+const initializeServices = async () => {
+  console.log('\n🚀 Initializing services...');
+  
+  // Test email service
+  const emailWorking = await testEmailConnection();
+  if (!emailWorking) {
+    console.log('\n⚠️  EMAIL SERVICE SETUP REQUIRED:');
+    console.log('1. Create a Gmail account or use existing one');
+    console.log('2. Enable 2-Factor Authentication');
+    console.log('3. Generate App Password: https://myaccount.google.com/apppasswords');
+    console.log('4. Set environment variables:');
+    console.log('   EMAIL_HOST=smtp.gmail.com');
+    console.log('   EMAIL_PORT=587');
+    console.log('   EMAIL_USER=your-email@gmail.com');
+    console.log('   EMAIL_PASS=your-app-password');
+    console.log('\n📝 Create a .env file with these variables or set them in your hosting environment\n');
+  }
+};
+
+// Call this after MongoDB connection is established
+db.once('open', async () => {
+  console.log('Connected to MongoDB');
+  await initializeServices();
+});
+
+// Also add a test email endpoint for debugging
+app.get('/api/test-email', async (req, res) => {
+  try {
+    const { sendEmail } = require('./utils/emailService');
+    
+    const testEmail = req.query.email || process.env.EMAIL_USER;
+    if (!testEmail) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide email parameter: /api/test-email?email=your@email.com'
+      });
+    }
+
+    await sendEmail({
+      to: testEmail,
+      template: 'passwordReset',
+      data: {
+        fullName: 'Test User',
+        resetUrl: 'https://example.com/test-reset-link'
+      }
+    });
+
+    res.json({
+      success: true,
+      message: `Test email sent successfully to ${testEmail}`
+    });
+
+  } catch (error) {
+    console.error('Test email failed:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Test email failed',
+      error: error.message
+    });
+  }
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);

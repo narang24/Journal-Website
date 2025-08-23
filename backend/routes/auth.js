@@ -316,8 +316,11 @@ router.post('/forgot-password', validateEmail, async (req, res) => {
   try {
     const { email } = req.body;
 
+    console.log(`🔍 Password reset requested for email: ${email}`);
+
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
+      console.log(`❌ No user found with email: ${email}`);
       return res.status(404).json({
         success: false,
         message: 'No account found with that email address.',
@@ -325,7 +328,10 @@ router.post('/forgot-password', validateEmail, async (req, res) => {
       });
     }
 
+    console.log(`✅ User found: ${user.fullName} (${user.email})`);
+
     if (!user.isEmailVerified) {
+      console.log(`❌ User email not verified: ${email}`);
       return res.status(400).json({
         success: false,
         message: 'Please verify your email first before resetting password.',
@@ -338,30 +344,76 @@ router.post('/forgot-password', validateEmail, async (req, res) => {
     const resetToken = crypto.randomBytes(32).toString('hex');
     user.resetPasswordToken = resetToken;
     user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+    
+    console.log(`🔄 Saving reset token for user: ${user.email}`);
     await user.save();
 
-    // Send reset email
+    // Prepare reset URL
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
-    await sendEmail({
-      to: user.email,
-      subject: 'Password Reset Request - Journal Platform',
-      template: 'passwordReset',
-      data: {
-        fullName: user.fullName,
-        resetUrl
-      }
-    });
+    console.log(`🔗 Reset URL generated: ${resetUrl}`);
 
-    res.status(200).json({
-      success: true,
-      message: 'Password reset email sent! Please check your inbox and follow the instructions.'
-    });
+    try {
+      // Send reset email
+      console.log(`📧 Attempting to send password reset email to: ${user.email}`);
+      
+      const emailResult = await sendEmail({
+        to: user.email,
+        subject: 'Password Reset Request - Journal Platform',
+        template: 'passwordReset',
+        data: {
+          fullName: user.fullName,
+          resetUrl: resetUrl
+        }
+      });
+
+      console.log(`✅ Password reset email sent successfully:`, emailResult);
+
+      res.status(200).json({
+        success: true,
+        message: 'Password reset email sent! Please check your inbox and follow the instructions.',
+        debug: process.env.NODE_ENV === 'development' ? {
+          resetToken: resetToken,
+          resetUrl: resetUrl,
+          expiresAt: new Date(user.resetPasswordExpires).toISOString()
+        } : undefined
+      });
+
+    } catch (emailError) {
+      console.error('❌ Failed to send password reset email:', emailError);
+      
+      // Clear the reset token since email failed
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+      await user.save();
+
+      // Return more specific error based on email error
+      if (emailError.message.includes('Invalid login')) {
+        return res.status(500).json({
+          success: false,
+          message: 'Email service configuration error. Please contact support.',
+          error: 'SMTP_AUTH_ERROR'
+        });
+      } else if (emailError.message.includes('connection')) {
+        return res.status(500).json({
+          success: false,
+          message: 'Unable to connect to email service. Please try again later.',
+          error: 'SMTP_CONNECTION_ERROR'
+        });
+      } else {
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to send password reset email. Please try again later.',
+          error: 'EMAIL_SEND_ERROR'
+        });
+      }
+    }
 
   } catch (error) {
-    console.error('Forgot password error:', error);
+    console.error('❌ Forgot password error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error while sending reset email.'
+      message: 'Server error while processing password reset request. Please try again.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
