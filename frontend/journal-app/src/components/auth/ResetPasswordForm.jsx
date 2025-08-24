@@ -202,32 +202,8 @@ const ResetPasswordForm = ({ token, onBackToLogin, onPasswordResetSuccess }) => 
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-emerald-400/20 to-green-400/20 rounded-full translate-y-12 -translate-x-12"></div>
         
         <div className="relative z-10">
-          {/* Brand Header */}
+          {/* Reset Password Header */}
           <div className="text-center mb-8">
-            <div className="flex items-center justify-center mb-6">
-              <img 
-                src="/src/assets/logo.png" 
-                alt="Journalise Logo" 
-                className="w-12 h-12 mr-3"
-                onError={(e) => {
-                  // Fallback if logo doesn't load
-                  e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'inline-flex';
-                }}
-              />
-              {/* Fallback icon if logo fails to load */}
-              <div className="hidden items-center justify-center w-12 h-12 bg-gradient-to-r from-green-600 to-teal-600 rounded-xl mr-3">
-                <Lock className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-teal-600 bg-clip-text text-transparent">
-                  Journalise
-                </h1>
-                <p className="text-xs text-gray-500 font-medium">Academic Publishing Platform</p>
-              </div>
-            </div>
-            
-            {/* Reset Password Header */}
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-green-600 to-teal-600 rounded-2xl mb-4 shadow-lg">
               <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
                 <Lock className="w-5 h-5 text-green-600" />
