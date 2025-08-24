@@ -5,8 +5,9 @@
       "destination": "https://journal-website-it00.onrender.com/api/$1"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api$).*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "cleanUrls": true
 }
