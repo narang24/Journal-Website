@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = 'https://journal-website-it00.onrender.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
 // Real API service that connects to your backend
 const apiService = {
@@ -22,7 +22,7 @@ const apiService = {
         if (data.action === 'login') {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
-          
+
           // For registration conflicts, throw structured error
           if (response.status === 409 && data.details) {
             const error = new Error(JSON.stringify(data));
@@ -31,7 +31,7 @@ const apiService = {
             error.details = data.details;
             throw error;
           }
-          
+
           throw new Error(data.message || 'Authentication required');
         }
         if (data.action === 'verify') {
@@ -40,14 +40,14 @@ const apiService = {
         if (data.action === 'signup') {
           throw new Error(data.message || 'Please sign up first');
         }
-        
+
         // Handle validation errors
         if (data.errors && Array.isArray(data.errors)) {
           const error = new Error(data.message || 'Validation failed');
           error.errors = data.errors;
           throw error;
         }
-        
+
         throw new Error(data.message || 'Something went wrong');
       }
 
@@ -67,7 +67,7 @@ const apiService = {
     });
     return response;
   },
-  
+
   async register(userData) {
     try {
       const response = await this.request('/auth/register', {
