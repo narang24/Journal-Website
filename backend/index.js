@@ -15,8 +15,8 @@ const corsOptions = {
   origin: function (origin, callback) {
     // Define allowed origins
     const allowedOrigins = [
-      'http://localhost:3000',
-      'https://journal-website-three.vercel.app',
+      'http://localhost:5173',
+      'https://journalise.vercel.app',
       process.env.FRONTEND_URL
     ].filter(Boolean); // Remove any undefined values
 
