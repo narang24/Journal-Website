@@ -10,12 +10,73 @@ dotenv.config();
 
 const app = express();
 
-// Middleware
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
-}));
-app.use(express.json());
+// Enhanced CORS configuration
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Define allowed origins
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'https://journal-website-three.vercel.app',
+      process.env.FRONTEND_URL
+    ].filter(Boolean); // Remove any undefined values
+
+    // Allow requests with no origin (mobile apps, curl, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      console.log('Allowed origins:', allowedOrigins);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Cache-Control',
+    'X-File-Name'
+  ],
+  exposedHeaders: ['Content-Length', 'X-JSON'],
+  maxAge: 86400, // Cache preflight response for 24 hours
+  optionsSuccessStatus: 200 // For legacy browser support
+};
+
+// Apply CORS middleware
+app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
+
+// Add security headers middleware
+app.use((req, res, next) => {
+  // Set CORS headers manually as backup
+  const allowedOrigin = req.headers.origin;
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'https://journal-website-three.vercel.app',
+    process.env.FRONTEND_URL
+  ].filter(Boolean);
+
+  if (allowedOrigins.includes(allowedOrigin)) {
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+  }
+  
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  
+  next();
+});
+
+// Body parser middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/journal_platform', {
@@ -29,11 +90,9 @@ db.once('open', () => {
   console.log('Connected to MongoDB');
 });
 
-// Add this to your backend/index.js file after the MongoDB connection
-
+// Email service initialization
 const { testEmailConnection } = require('./utils/emailService');
 
-// Test email service on startup
 const initializeServices = async () => {
   console.log('\n🚀 Initializing services...');
   
@@ -59,7 +118,29 @@ db.once('open', async () => {
   await initializeServices();
 });
 
-// Also add a test email endpoint for debugging
+// Enhanced Health check route with CORS debugging info
+app.get('/api/health', (req, res) => {
+  const requestOrigin = req.headers.origin;
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'https://journal-website-three.vercel.app',
+    process.env.FRONTEND_URL
+  ].filter(Boolean);
+
+  res.json({ 
+    message: 'Server is running!',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    cors: {
+      requestOrigin: requestOrigin || 'No origin header',
+      allowedOrigins: allowedOrigins,
+      isOriginAllowed: allowedOrigins.includes(requestOrigin),
+      frontendUrl: process.env.FRONTEND_URL
+    }
+  });
+});
+
+// Test email endpoint for debugging
 app.get('/api/test-email', async (req, res) => {
   try {
     const { sendEmail } = require('./utils/emailService');
@@ -101,15 +182,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/manuscripts', manuscriptRoutes);
 
-// Health check route
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    message: 'Server is running!',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
-
 // Global error handling middleware
 app.use((error, req, res, next) => {
   console.error('Global Error Handler:', error);
@@ -141,7 +213,15 @@ app.use((error, req, res, next) => {
 app.use('*', (req, res) => {
   res.status(404).json({ 
     success: false,
-    message: 'Route not found' 
+    message: 'Route not found',
+    requestedPath: req.originalUrl,
+    availableRoutes: [
+      'GET /api/health',
+      'POST /api/auth/register',
+      'POST /api/auth/login',
+      'GET /api/auth/me',
+      'POST /api/auth/logout'
+    ]
   });
 });
 
@@ -151,4 +231,6 @@ app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
   console.log(`📧 Email service configured: ${process.env.EMAIL_HOST || 'Not configured'}`);
   console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+  console.log(`🌍 Server URL: ${process.env.NODE_ENV === 'production' ? 'https://journal-website-it00.onrender.com' : `http://localhost:${PORT}`}`);
+  console.log(`📋 CORS enabled for: http://localhost:3000, ${process.env.FRONTEND_URL || 'undefined'}`);
 });
