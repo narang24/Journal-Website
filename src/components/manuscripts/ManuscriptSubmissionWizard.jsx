@@ -17,9 +17,6 @@ import Step3Metadata from './steps/Step3Metadata';
 import Step4Supplementary from './steps/Step4Supplementary';
 import Step5Confirmation from './steps/Step5Confirmation';
 
-// ============================================
-// FILE: src/components/manuscripts/ManuscriptSubmissionWizard.jsx
-// ============================================
 const ManuscriptSubmissionWizard = ({ onClose, onSubmit }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [errors, setErrors] = useState({});
@@ -321,55 +318,4 @@ const ManuscriptSubmissionWizard = ({ onClose, onSubmit }) => {
   );
 };
 
-// ============================================
-// DEMO: Usage in Dashboard (Updated)
-// ============================================
-const DemoApp = () => {
-  const [showSubmissionForm, setShowSubmissionForm] = useState(false);
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-xl shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            Journal Submission System
-          </h1>
-          <p className="text-gray-600 mb-8">
-            Click the button below to start a new manuscript submission.
-          </p>
-          
-          <button
-            onClick={() => setShowSubmissionForm(true)}
-            className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-md"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            New Submission
-          </button>
-
-          <div className="mt-8 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-            <h3 className="font-semibold text-gray-900 mb-2">How to use this system:</h3>
-            <ol className="list-decimal list-inside text-sm text-gray-700 space-y-1">
-              <li>Complete the submission checklist</li>
-              <li>Upload your manuscript file (DOC, DOCX, RTF, or PDF)</li>
-              <li>Enter author information and manuscript details</li>
-              <li>Optionally add supplementary files</li>
-              <li>Review and submit</li>
-            </ol>
-          </div>
-        </div>
-      </div>
-
-      {showSubmissionForm && (
-        <ManuscriptSubmissionWizard
-          onClose={() => setShowSubmissionForm(false)}
-          onSubmit={() => {
-            setShowSubmissionForm(false);
-            alert('Submission successful! Your manuscript has been submitted for review.');
-          }}
-        />
-      )}
-    </div>
-  );
-};
-
-export default DemoApp;
+export default ManuscriptSubmissionWizard;

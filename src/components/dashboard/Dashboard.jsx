@@ -30,7 +30,7 @@ import {
   UploadCloud
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext'; // Import the real useAuth hook
-import ManuscriptSubmissionForm from '../manuscripts/ManuscriptSubmissionForm'
+import ManuscriptSubmissionWizard from '../manuscripts/ManuscriptSubmissionWizard'
 
 // Mock API Service
 const apiService = {
@@ -487,7 +487,7 @@ const Dashboard = () => {
 
       {/* Manuscript Submission Modal */}
       {showSubmissionForm && (
-        <ManuscriptSubmissionForm
+        <ManuscriptSubmissionWizard
           onClose={() => setShowSubmissionForm(false)}
           onSubmit={handleManuscriptSubmit}
         />

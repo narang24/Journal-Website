@@ -1,4 +1,16 @@
 import React from 'react'
+import { 
+  X, 
+  FileText, 
+  Upload, 
+  CheckCircle, 
+  User, 
+  Tag, 
+  AlertTriangle,
+  Plus,
+  Trash2,
+  UploadCloud
+} from 'lucide-react';
 
 const Step3Metadata = ({ formData, handleMetadataChange, errors }) => (
   <div className="space-y-8">
