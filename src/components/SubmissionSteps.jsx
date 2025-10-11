@@ -13,8 +13,53 @@ const SubmissionSteps = () => {
   });
   const [copyrightAgreed, setCopyrightAgreed] = useState(false);
   const [comments, setComments] = useState('');
-  const [uploadedFile, setUploadedFile] = useState(null);
-  const [fileError, setFileError] = useState('');
+  const [authors, setAuthors] = useState([
+    {
+      id: 1,
+      firstName: '',
+      middleName: '',
+      lastName: '',
+      email: '',
+      affiliation: '',
+      country: '',
+      bioStatement: '',
+      isPrincipal: true
+    }
+  ]);
+
+  const addAuthor = () => {
+    const newAuthor = {
+      id: Date.now(),
+      firstName: '',
+      middleName: '',
+      lastName: '',
+      email: '',
+      affiliation: '',
+      country: '',
+      bioStatement: '',
+      isPrincipal: false
+    };
+    setAuthors([...authors, newAuthor]);
+  };
+
+  const deleteAuthor = (id) => {
+    if (authors.length > 1) {
+      setAuthors(authors.filter(author => author.id !== id));
+    }
+  };
+
+  const updateAuthor = (id, field, value) => {
+    setAuthors(authors.map(author => 
+      author.id === id ? { ...author, [field]: value } : author
+    ));
+  };
+
+  const setPrincipalContact = (id) => {
+    setAuthors(authors.map(author => ({
+      ...author,
+      isPrincipal: author.id === id
+    })));
+  };
 
   const steps = [
     {
@@ -56,34 +101,6 @@ const SubmissionSteps = () => {
     }));
   };
 
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const validFormats = ['.doc', '.docx', '.pdf', '.odt'];
-      const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
-      
-      if (!validFormats.includes(fileExtension)) {
-        setFileError('Invalid file format. Please upload a Word, PDF, or OpenOffice document.');
-        setUploadedFile(null);
-        return;
-      }
-
-      if (file.size > 10 * 1024 * 1024) {
-        setFileError('File size exceeds 10MB limit.');
-        setUploadedFile(null);
-        return;
-      }
-
-      setFileError('');
-      setUploadedFile(file);
-    }
-  };
-
-  const removeFile = () => {
-    setUploadedFile(null);
-    setFileError('');
-  };
-
   const isStep1Complete = () => {
     return Object.values(checklist).every(val => val) && copyrightAgreed;
   };
@@ -92,9 +109,6 @@ const SubmissionSteps = () => {
     if (currentStep === 1) {
       return isStep1Complete();
     }
-    if (currentStep === 2) {
-      return uploadedFile !== null;
-    }
     return true;
   };
 
@@ -102,6 +116,7 @@ const SubmissionSteps = () => {
     if (currentStep === 1) {
       return (
         <div className="space-y-8">
+          {/* Submission Checklist */}
           <div className="border-b pb-6">
             <h3 className="text-xl font-bold text-gray-800 mb-4">Submission Checklist</h3>
             <p className="text-gray-600 mb-4 text-sm">
@@ -187,6 +202,7 @@ const SubmissionSteps = () => {
             </div>
           </div>
 
+          {/* Copyright Notice */}
           <div className="border-b pb-6">
             <h3 className="text-xl font-bold text-gray-800 mb-4">Copyright Notice</h3>
 
@@ -253,6 +269,7 @@ const SubmissionSteps = () => {
             </label>
           </div>
 
+          {/* Privacy Statement */}
           <div className="border-b pb-6">
             <h3 className="text-xl font-bold text-gray-800 mb-4">Journal's Privacy Statement</h3>
             <p className="text-sm text-gray-700 mb-3">
@@ -263,6 +280,7 @@ const SubmissionSteps = () => {
             </p>
           </div>
 
+          {/* Comments for Editor */}
           <div>
             <h3 className="text-xl font-bold text-gray-800 mb-4">Comments for the Editor</h3>
             <p className="text-sm text-gray-600 mb-2">Enter text (optional)</p>
@@ -278,123 +296,268 @@ const SubmissionSteps = () => {
       );
     }
 
-    if (currentStep === 2) {
+    if (currentStep === 3) {
       return (
         <div className="space-y-8">
-          <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
-            <h3 className="font-semibold text-gray-800 mb-3">To upload a manuscript to this journal, complete the following steps:</h3>
-            <ol className="list-decimal ml-5 space-y-2 text-sm text-gray-700">
-              <li>Click <span className="font-semibold">Browse</span> (or Choose File) to open a file selection window.</li>
-              <li>Locate the file you wish to submit and select it.</li>
-              <li>Click <span className="font-semibold">Open</span> to confirm your selection.</li>
-              <li>Click <span className="font-semibold">Upload</span> to transfer the file to the journal's system.</li>
-              <li>Once uploaded successfully, click <span className="font-semibold">Save and Continue</span> at the bottom.</li>
-            </ol>
-            <p className="text-sm text-gray-600 mt-3">
-              Encountering difficulties? Contact{' '}
-              <a href="#" className="text-blue-600 hover:underline font-medium">Managing Editor</a>{' '}
-              for assistance.
-            </p>
-          </div>
-
-          <div className="border rounded-lg p-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Submission File</h3>
+          {/* Authors Section */}
+          <div className="border-b pb-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Authors</h3>
             
-            {!uploadedFile ? (
-              <div className="space-y-4">
-                <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                  <Upload className="mx-auto mb-4 text-gray-400" size={48} />
-                  <p className="text-sm text-gray-600 mb-4">No submission file uploaded.</p>
-                  <label className="inline-block">
-                    <input
-                      type="file"
-                      onChange={handleFileUpload}
-                      accept=".doc,.docx,.pdf,.odt"
-                      className="hidden"
-                      id="file-upload"
-                    />
-                    <span className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer inline-flex items-center gap-2">
-                      <Upload size={18} />
-                      Choose File
-                    </span>
-                  </label>
-                  <p className="text-xs text-gray-500 mt-3">
-                    Accepted formats: DOC, DOCX, PDF, ODT (Max 10MB)
-                  </p>
+            {authors.map((author, index) => (
+              <div key={author.id} className="mb-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-lg font-semibold text-gray-700">
+                    Author {index + 1}
+                  </h4>
+                  {authors.length > 1 && (
+                    <button
+                      onClick={() => deleteAuthor(author.id)}
+                      className="text-red-600 hover:text-red-800 text-sm font-medium"
+                    >
+                      Delete Author
+                    </button>
+                  )}
                 </div>
 
-                {fileError && (
-                  <div className="bg-red-50 border-l-4 border-red-500 p-4 flex items-start gap-3">
-                    <AlertCircle className="text-red-500 flex-shrink-0" size={20} />
-                    <p className="text-sm text-red-700">{fileError}</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="bg-green-50 border-l-4 border-green-500 p-4 flex items-start gap-3">
-                  <CheckCircle className="text-green-500 flex-shrink-0" size={20} />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-800 mb-1">File uploaded successfully!</p>
-                    <p className="text-sm text-gray-700">{uploadedFile.name}</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Size: {(uploadedFile.size / 1024).toFixed(2)} KB
-                    </p>
-                  </div>
-                  <button
-                    onClick={removeFile}
-                    className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
-                  >
-                    Remove
-                  </button>
-                </div>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <FileText className="text-blue-600 flex-shrink-0 mt-1" size={24} />
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <h4 className="font-semibold text-gray-800 mb-2">Ensuring a Blind Review</h4>
-                      <p className="text-sm text-gray-700 mb-2">
-                        If you are submitting to a peer-reviewed section, ensure your manuscript is prepared for blind review:
-                      </p>
-                      <ul className="list-disc ml-5 text-sm text-gray-700 space-y-1">
-                        <li>Remove author names from the manuscript text</li>
-                        <li>Replace author references with "[Author]" in citations</li>
-                        <li>Remove identifying information from document properties</li>
-                        <li>Ensure acknowledgments don't reveal author identity</li>
-                      </ul>
-                      <a href="#" className="text-blue-600 hover:underline text-sm font-medium mt-2 inline-block">
-                        Learn more about blind review preparation →
-                      </a>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        First Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={author.firstName}
+                        onChange={(e) => updateAuthor(author.id, 'firstName', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Enter first name"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Middle Name
+                      </label>
+                      <input
+                        type="text"
+                        value={author.middleName}
+                        onChange={(e) => updateAuthor(author.id, 'middleName', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Enter middle name"
+                      />
                     </div>
                   </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Last Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={author.lastName}
+                        onChange={(e) => updateAuthor(author.id, 'lastName', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Enter last name"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Email <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        value={author.email}
+                        onChange={(e) => updateAuthor(author.id, 'email', e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="Enter email address"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Affiliation
+                    </label>
+                    <textarea
+                      value={author.affiliation}
+                      onChange={(e) => updateAuthor(author.id, 'affiliation', e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      rows="2"
+                      placeholder='Your institution, e.g. "Simon Fraser University"'
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Country
+                    </label>
+                    <select 
+                      value={author.country}
+                      onChange={(e) => updateAuthor(author.id, 'country', e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                      <option value="">Select a country</option>
+                      <option value="US">United States</option>
+                      <option value="UK">United Kingdom</option>
+                      <option value="IN">India</option>
+                      <option value="CA">Canada</option>
+                      <option value="AU">Australia</option>
+                      <option value="DE">Germany</option>
+                      <option value="FR">France</option>
+                      <option value="JP">Japan</option>
+                      <option value="CN">China</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Bio Statement
+                    </label>
+                    <p className="text-xs text-gray-500 mb-2">(E.g., department and rank)</p>
+                    <textarea
+                      value={author.bioStatement}
+                      onChange={(e) => updateAuthor(author.id, 'bioStatement', e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      rows="3"
+                      placeholder="E.g., department and rank"
+                    />
+                  </div>
+
+                  {authors.length > 1 && (
+                    <div className="pt-2 border-t">
+                      <p className="text-xs text-gray-500 mb-2">
+                        ↑ ↓ Reorder authors to appear in the order they will be listed on publication.
+                      </p>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          checked={author.isPrincipal}
+                          onChange={() => setPrincipalContact(author.id)}
+                          className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span className="text-sm text-gray-700">
+                          Principal contact for editorial correspondence.
+                        </span>
+                      </label>
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
+            ))}
+
+            <button 
+              onClick={addAuthor}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+            >
+              Add Author
+            </button>
           </div>
 
-          <div className="bg-gray-50 rounded-lg p-6">
-            <h4 className="font-semibold text-gray-800 mb-3">Submission Guidelines</h4>
-            <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-700">
+          {/* Title and Abstract */}
+          <div className="border-b pb-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Title and Abstract</h3>
+            
+            <div className="space-y-4">
               <div>
-                <p className="font-medium mb-2">✓ Accepted File Formats:</p>
-                <ul className="ml-4 space-y-1">
-                  <li>• Microsoft Word (.doc, .docx)</li>
-                  <li>• PDF (.pdf)</li>
-                  <li>• OpenOffice (.odt)</li>
-                </ul>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="Enter manuscript title"
+                />
               </div>
+
               <div>
-                <p className="font-medium mb-2">✓ File Requirements:</p>
-                <ul className="ml-4 space-y-1">
-                  <li>• Maximum file size: 10MB</li>
-                  <li>• Double-spaced text</li>
-                  <li>• 12pt Times New Roman font</li>
-                  <li>• Figures/tables included in text</li>
-                </ul>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Abstract <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  rows="6"
+                  placeholder="Enter abstract"
+                />
               </div>
             </div>
           </div>
+
+          {/* Indexing */}
+          <div className="border-b pb-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Indexing</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Provide terms for indexing the submission; separate terms with a semi-colon (term1; term2; term3).
+            </p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Keywords
+                </label>
+                <input
+                  type="text"
+                  className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="keyword1; keyword2; keyword3"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Language
+                </label>
+                <input
+                  type="text"
+                  defaultValue="en"
+                  className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  English=en; French=fr; Spanish=es
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Contributors and Supporting Agencies */}
+          <div className="border-b pb-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Contributors and Supporting Agencies</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Identify agencies (a person, an organization, or a service) that made contributions to the content or provided funding or support for the work presented in this submission. Separate them with a semi-colon (e.g. John Doe, Metro University; Master University, Department of Computer Science).
+            </p>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Agencies
+              </label>
+              <input
+                type="text"
+                className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Agency 1; Agency 2"
+              />
+            </div>
+          </div>
+
+          {/* References */}
+          <div>
+            <h3 className="text-xl font-bold text-gray-800 mb-4">References</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Provide a formatted list of references for works cited in this submission. Please separate individual references with a blank line.
+            </p>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                References
+              </label>
+              <textarea
+                className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                rows="8"
+                placeholder="Enter references here, separated by blank lines"
+              />
+            </div>
+          </div>
+
+          <p className="text-xs text-gray-500 pt-4 border-t">* Denotes required field</p>
         </div>
       );
     }
@@ -423,6 +586,7 @@ const SubmissionSteps = () => {
           </p>
         </div>
 
+        {/* Progress Bar */}
         <div className="mb-12">
           <div className="flex items-center justify-between mb-4">
             {steps.map((step, index) => (
@@ -453,6 +617,7 @@ const SubmissionSteps = () => {
           </div>
         </div>
 
+        {/* Step Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {steps.map((step) => {
             const Icon = step.icon;
@@ -493,6 +658,7 @@ const SubmissionSteps = () => {
           })}
         </div>
 
+        {/* Main Content Area */}
         <div className="bg-white rounded-xl p-8 shadow-lg">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -512,6 +678,7 @@ const SubmissionSteps = () => {
             {renderStepContent()}
           </div>
 
+          {/* Navigation Buttons */}
           <div className="flex justify-between mt-8 pt-6 border-t">
             <button
               onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
@@ -530,9 +697,9 @@ const SubmissionSteps = () => {
                   setCurrentStep(Math.min(steps.length, currentStep + 1));
                 }
               }}
-              disabled={currentStep === steps.length || !canProceed()}
+              disabled={currentStep === steps.length || (currentStep === 1 && !canProceed())}
               className={`px-6 py-3 rounded-lg font-semibold transition-all flex items-center gap-2 ${
-                currentStep === steps.length || !canProceed()
+                currentStep === steps.length || (currentStep === 1 && !canProceed())
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   : 'bg-indigo-600 text-white hover:bg-indigo-700'
               }`}
