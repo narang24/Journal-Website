@@ -13,6 +13,10 @@ const SubmissionSteps = () => {
   });
   const [copyrightAgreed, setCopyrightAgreed] = useState(false);
   const [comments, setComments] = useState('');
+  const [supplementaryFiles, setSupplementaryFiles] = useState([]);
+  const [manuscriptFiles, setManuscriptFiles] = useState([]);
+  const [title, setTitle] = useState('');
+  const [abstract, setAbstract] = useState('');
   const [authors, setAuthors] = useState([
     {
       id: 1,
@@ -61,6 +65,59 @@ const SubmissionSteps = () => {
     })));
   };
 
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const newFile = {
+        id: Date.now(),
+        title: file.name,
+        originalFileName: file.name,
+        dateUploaded: new Date().toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        }),
+        file: file
+      };
+      setSupplementaryFiles([...supplementaryFiles, newFile]);
+      event.target.value = null;
+    }
+  };
+
+  const deleteSupplementaryFile = (id) => {
+    setSupplementaryFiles(supplementaryFiles.filter(file => file.id !== id));
+  };
+
+  const handleManuscriptUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const newFile = {
+        id: Date.now(),
+        originalFileName: file.name,
+        type: file.type || 'application/octet-stream',
+        fileSize: (file.size / 1024).toFixed(2) + ' KB',
+        dateUploaded: new Date().toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        }),
+        file: file
+      };
+      setManuscriptFiles([...manuscriptFiles, newFile]);
+      event.target.value = null;
+    }
+  };
+
+  const getAllUploadedFiles = () => {
+    return [...manuscriptFiles, ...supplementaryFiles.map(sf => ({
+      id: sf.id,
+      originalFileName: sf.originalFileName,
+      type: sf.file?.type || 'application/octet-stream',
+      fileSize: sf.file ? (sf.file.size / 1024).toFixed(2) + ' KB' : 'N/A',
+      dateUploaded: sf.dateUploaded
+    }))];
+  };
+
   const steps = [
     {
       id: 1,
@@ -105,9 +162,94 @@ const SubmissionSteps = () => {
     return Object.values(checklist).every(val => val) && copyrightAgreed;
   };
 
+  const isStep2Complete = () => {
+    if (manuscriptFiles.length === 0) {
+      return false;
+    }
+    return true;
+  };
+
+  const isStep3Complete = () => {
+    // Check if at least one author has required fields filled
+    const hasValidAuthor = authors.some(author => 
+      author.firstName.trim() !== '' && 
+      author.lastName.trim() !== '' && 
+      author.email.trim() !== ''
+    );
+    
+    // Check if title and abstract are filled
+    if (!title.trim() || !abstract.trim()) {
+      return false;
+    }
+    
+    return hasValidAuthor;
+  };
+
+  const validateCurrentStep = () => {
+    if (currentStep === 1) {
+      if (!isStep1Complete()) {
+        const missingItems = [];
+        if (!Object.values(checklist).every(val => val)) {
+          missingItems.push('• Complete all items in the Submission Checklist');
+        }
+        if (!copyrightAgreed) {
+          missingItems.push('• Agree to the Copyright Notice');
+        }
+        alert('⚠️ Please complete the following required items:\n\n' + missingItems.join('\n'));
+        return false;
+      }
+      return true;
+    }
+    
+    if (currentStep === 2) {
+      if (!isStep2Complete()) {
+        alert('⚠️ Please upload your manuscript file before proceeding.');
+        return false;
+      }
+      return true;
+    }
+    
+    if (currentStep === 3) {
+      if (!isStep3Complete()) {
+        let missingFields = [];
+        
+        // Check author details
+        const hasValidAuthor = authors.some(author => 
+          author.firstName.trim() !== '' && 
+          author.lastName.trim() !== '' && 
+          author.email.trim() !== ''
+        );
+        
+        if (!hasValidAuthor) {
+          missingFields.push('• At least one author with First Name, Last Name, and Email');
+        }
+        
+        if (!title.trim()) {
+          missingFields.push('• Title');
+        }
+        
+        if (!abstract.trim()) {
+          missingFields.push('• Abstract');
+        }
+        
+        alert('⚠️ Please fill in all required fields:\n\n' + missingFields.join('\n'));
+        return false;
+      }
+      return true;
+    }
+    
+    return true;
+  };
+
   const canProceed = () => {
     if (currentStep === 1) {
       return isStep1Complete();
+    }
+    if (currentStep === 2) {
+      return isStep2Complete();
+    }
+    if (currentStep === 3) {
+      return isStep3Complete();
     }
     return true;
   };
@@ -296,6 +438,66 @@ const SubmissionSteps = () => {
       );
     }
 
+    if (currentStep === 2) {
+      return (
+        <div className="space-y-8">
+          {/* Upload Instructions */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-gray-700">
+              Upload your manuscript file here. Accepted formats include Microsoft Word (.doc, .docx), PDF (.pdf), and OpenOffice (.odt) files.
+            </p>
+          </div>
+
+          {/* Upload Section */}
+          <div className="border-b pb-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Upload Manuscript</h3>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select manuscript file <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="file"
+                onChange={handleManuscriptUpload}
+                accept=".doc,.docx,.pdf,.odt"
+                className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+          </div>
+
+          {/* Uploaded Files */}
+          {manuscriptFiles.length > 0 && (
+            <div>
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Uploaded Files</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border border-gray-300">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">ID</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">FILE NAME</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">TYPE</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">SIZE</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">DATE</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {manuscriptFiles.map((file, index) => (
+                      <tr key={file.id} className="hover:bg-gray-50">
+                        <td className="border border-gray-300 px-4 py-2 text-sm">{index + 1}</td>
+                        <td className="border border-gray-300 px-4 py-2 text-sm">{file.originalFileName}</td>
+                        <td className="border border-gray-300 px-4 py-2 text-sm">{file.type}</td>
+                        <td className="border border-gray-300 px-4 py-2 text-sm">{file.fileSize}</td>
+                        <td className="border border-gray-300 px-4 py-2 text-sm">{file.dateUploaded}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     if (currentStep === 3) {
       return (
         <div className="space-y-8">
@@ -466,6 +668,8 @@ const SubmissionSteps = () => {
                 </label>
                 <input
                   type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="Enter manuscript title"
                 />
@@ -476,6 +680,8 @@ const SubmissionSteps = () => {
                   Abstract <span className="text-red-500">*</span>
                 </label>
                 <textarea
+                  value={abstract}
+                  onChange={(e) => setAbstract(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   rows="6"
                   placeholder="Enter abstract"
@@ -562,6 +768,224 @@ const SubmissionSteps = () => {
       );
     }
 
+    if (currentStep === 4) {
+      return (
+        <div className="space-y-8">
+          {/* Description */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-gray-700">
+              This optional step allows Supplementary Files to be added to a submission. The files, which can be in any format, might include (a) research instruments, (b) data sets, which comply with the terms of the study's research ethics review, (c) sources that otherwise would be unavailable to readers, (d) figures and tables that cannot be integrated into the text itself, or other materials that add to the contribution of the work.
+            </p>
+          </div>
+
+          {/* Supplementary Files Table */}
+          <div className="border-b pb-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Supplementary Files</h3>
+            
+            {supplementaryFiles.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border border-gray-300">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">ID</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">TITLE</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">ORIGINAL FILE NAME</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">DATE UPLOADED</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {supplementaryFiles.map((file, index) => (
+                      <tr key={file.id} className="hover:bg-gray-50">
+                        <td className="border border-gray-300 px-4 py-2 text-sm">{index + 1}</td>
+                        <td className="border border-gray-300 px-4 py-2 text-sm">{file.title}</td>
+                        <td className="border border-gray-300 px-4 py-2 text-sm">{file.originalFileName}</td>
+                        <td className="border border-gray-300 px-4 py-2 text-sm">{file.dateUploaded}</td>
+                        <td className="border border-gray-300 px-4 py-2 text-sm">
+                          <button
+                            onClick={() => deleteSupplementaryFile(file.id)}
+                            className="text-red-600 hover:text-red-800 font-medium"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+                <p className="text-sm text-gray-600 italic">No supplementary files have been added to this submission.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Upload Section */}
+          <div>
+            <div className="flex items-start gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Upload supplementary file
+                </label>
+                <input
+                  type="file"
+                  onChange={handleFileUpload}
+                  className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+              <div className="pt-7">
+                <a 
+                  href="#" 
+                  className="text-blue-600 hover:underline text-sm font-medium whitespace-nowrap"
+                >
+                  ENSURING A BLIND REVIEW
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (currentStep === 5) {
+      const allFiles = getAllUploadedFiles();
+      
+      return (
+        <div className="space-y-8">
+          {/* Confirmation Message */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-gray-700">
+              To submit your manuscript, click <strong>Finish Submission</strong>. The principal contact will receive an acknowledgement by email and will be able to view the submission's progress through the editorial process by logging in to the journal web site. Thank you for your interest in publishing with us.
+            </p>
+          </div>
+
+          {/* File Summary */}
+          <div>
+            <h3 className="text-xl font-bold text-gray-800 mb-4">File Summary</h3>
+            
+            {allFiles.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border border-gray-300">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">ID</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">ORIGINAL FILE NAME</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">TYPE</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">FILE SIZE</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">DATE UPLOADED</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allFiles.map((file, index) => (
+                      <tr key={file.id} className="hover:bg-gray-50">
+                        <td className="border border-gray-300 px-4 py-2 text-sm">{index + 1}</td>
+                        <td className="border border-gray-300 px-4 py-2 text-sm">{file.originalFileName}</td>
+                        <td className="border border-gray-300 px-4 py-2 text-sm">{file.type}</td>
+                        <td className="border border-gray-300 px-4 py-2 text-sm">{file.fileSize}</td>
+                        <td className="border border-gray-300 px-4 py-2 text-sm">{file.dateUploaded}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+                <p className="text-sm text-gray-600 italic">No files have been attached to this submission.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-4 pt-6 border-t">
+            <button
+              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold"
+              onClick={() => {
+                alert('Submission completed successfully! You will receive a confirmation email shortly.');
+              }}
+            >
+              Finish Submission
+            </button>
+            <button
+              className="bg-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-400 transition-colors font-semibold"
+              onClick={() => setCurrentStep(1)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (currentStep === 5) {
+      const allFiles = getAllUploadedFiles();
+      
+      return (
+        <div className="space-y-8">
+          {/* Confirmation Message */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-gray-700">
+              To submit your manuscript to <strong>International Journal of Engineering, Science and Information Technology</strong> click Finish Submission. The submission's principal contact will receive an acknowledgement by email and will be able to view the submission's progress through the editorial process by logging in to the journal web site. Thank you for your interest in publishing with International Journal of Engineering, Science and Information Technology.
+            </p>
+          </div>
+
+          {/* File Summary */}
+          <div>
+            <h3 className="text-xl font-bold text-gray-800 mb-4">File Summary</h3>
+            
+            {allFiles.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border border-gray-300">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">ID</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">ORIGINAL FILE NAME</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">TYPE</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">FILE SIZE</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">DATE UPLOADED</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allFiles.map((file, index) => (
+                      <tr key={file.id} className="hover:bg-gray-50">
+                        <td className="border border-gray-300 px-4 py-2 text-sm">{index + 1}</td>
+                        <td className="border border-gray-300 px-4 py-2 text-sm">{file.originalFileName}</td>
+                        <td className="border border-gray-300 px-4 py-2 text-sm">{file.type}</td>
+                        <td className="border border-gray-300 px-4 py-2 text-sm">{file.fileSize}</td>
+                        <td className="border border-gray-300 px-4 py-2 text-sm">{file.dateUploaded}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+                <p className="text-sm text-gray-600 italic">No files have been attached to this submission.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-4 pt-6 border-t">
+            <button
+              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold"
+              onClick={() => {
+                alert('Submission completed successfully!');
+              }}
+            >
+              Finish Submission
+            </button>
+            <button
+              className="bg-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-400 transition-colors font-semibold"
+              onClick={() => setCurrentStep(1)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-[200px] flex items-center justify-center text-gray-400">
         <div className="text-center">
@@ -618,40 +1042,44 @@ const SubmissionSteps = () => {
         </div>
 
         {/* Step Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-5 gap-3 mb-8">
           {steps.map((step) => {
             const Icon = step.icon;
+            const isCompleted = currentStep > step.id;
+            const isCurrent = currentStep === step.id;
+            
             return (
               <div
                 key={step.id}
-                onClick={() => setCurrentStep(step.id)}
-                className={`bg-white rounded-xl p-6 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer border-2 ${
-                  currentStep === step.id
-                    ? 'border-indigo-600 scale-105'
-                    : 'border-transparent hover:border-indigo-300'
-                }`}
+                className={`bg-white rounded-lg p-4 shadow-md border-2 transition-all duration-300 ${
+                  isCurrent
+                    ? 'border-indigo-600'
+                    : isCompleted
+                    ? 'border-green-500'
+                    : 'border-gray-200'
+                } opacity-${isCurrent || isCompleted ? '100' : '60'}`}
               >
-                <div className="flex items-start gap-4">
+                <div className="flex flex-col items-center text-center">
                   <div
-                    className={`p-3 rounded-lg ${
-                      currentStep === step.id
+                    className={`p-2 rounded-lg mb-2 ${
+                      isCurrent
                         ? 'bg-indigo-100 text-indigo-600'
+                        : isCompleted
+                        ? 'bg-green-100 text-green-600'
                         : 'bg-gray-100 text-gray-600'
                     }`}
                   >
-                    <Icon size={28} />
+                    <Icon size={20} />
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm font-semibold text-gray-500">
-                        Step {step.id}
-                      </span>
-                    </div>
-                    <h3 className="font-bold text-gray-800 mb-2 text-lg">
-                      {step.title}
-                    </h3>
-                    <p className="text-gray-600 text-sm">{step.description}</p>
+                  <div className="mb-1">
+                    <span className="text-xs font-semibold text-gray-500">
+                      Step {step.id}
+                    </span>
                   </div>
+                  <h3 className="font-bold text-gray-800 text-sm mb-1">
+                    {step.title}
+                  </h3>
+                  <p className="text-gray-600 text-xs">{step.description}</p>
                 </div>
               </div>
             );
@@ -693,18 +1121,18 @@ const SubmissionSteps = () => {
             </button>
             <button
               onClick={() => {
-                if (canProceed()) {
-                  setCurrentStep(Math.min(steps.length, currentStep + 1));
+                if (currentStep < steps.length && validateCurrentStep()) {
+                  setCurrentStep(currentStep + 1);
                 }
               }}
-              disabled={currentStep === steps.length || (currentStep === 1 && !canProceed())}
+              disabled={currentStep === steps.length}
               className={`px-6 py-3 rounded-lg font-semibold transition-all flex items-center gap-2 ${
-                currentStep === steps.length || (currentStep === 1 && !canProceed())
+                currentStep === steps.length
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   : 'bg-indigo-600 text-white hover:bg-indigo-700'
               }`}
             >
-              {currentStep === steps.length ? 'Completed' : 'Save and Continue'}
+              {currentStep === steps.length ? 'Review Submission' : 'Save and Continue'}
               {currentStep !== steps.length && <ChevronRight size={20} />}
             </button>
           </div>
