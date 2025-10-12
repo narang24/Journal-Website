@@ -30,7 +30,7 @@ import {
   UploadCloud
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext'; // Import the real useAuth hook
-import ManuscriptSubmissionWizard from '../manuscripts/ManuscriptSubmissionWizard'
+import SubmissionSteps from '../SubmissionSteps';
 
 // Mock API Service
 const apiService = {
@@ -486,12 +486,28 @@ const Dashboard = () => {
       </div>
 
       {/* Manuscript Submission Modal */}
-      {showSubmissionForm && (
-        <ManuscriptSubmissionWizard
-          onClose={() => setShowSubmissionForm(false)}
-          onSubmit={handleManuscriptSubmit}
-        />
-      )}
+      {/* Manuscript Submission Modal */}
+{showSubmissionForm && (
+  <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="flex items-center justify-center min-h-screen px-4">
+      <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={() => setShowSubmissionForm(false)}></div>
+      <div className="relative bg-white rounded-2xl shadow-xl max-w-7xl w-full max-h-[90vh] overflow-y-auto z-50">
+        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
+          <h2 className="text-2xl font-bold text-gray-800">Submit New Manuscript</h2>
+          <button
+            onClick={() => setShowSubmissionForm(false)}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        <div className="p-6">
+          <SubmissionSteps />
+        </div>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };
