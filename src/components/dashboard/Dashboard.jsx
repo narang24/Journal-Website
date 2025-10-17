@@ -12,6 +12,7 @@ import {
   Filter, 
   AlertTriangle,
   TrendingUp,
+  TrendingDown,
   Globe,
   Calendar,
   Award,
@@ -27,15 +28,17 @@ import {
   X,
   User,
   Tag,
-  UploadCloud
+  UploadCloud,
+  Bell,
+  MessageSquare,
+  ArrowRight
 } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext'; // Import the real useAuth hook
+import { useAuth } from '../../contexts/AuthContext';
 import SubmissionSteps from '../SubmissionSteps';
 
 // Mock API Service
 const apiService = {
   getManuscripts: async () => {
-    // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     return {
       manuscripts: [
@@ -46,7 +49,8 @@ const apiService = {
           status: "pending_review",
           submissionDate: "2024-01-15",
           tags: ["React", "Web Development", "JavaScript"],
-          description: "This paper explores advanced React patterns and their applications in modern web development scenarios."
+          description: "This paper explores advanced React patterns and their applications in modern web development scenarios.",
+          progress: 65
         },
         {
           id: 2,
@@ -55,7 +59,8 @@ const apiService = {
           status: "review_assigned",
           submissionDate: "2024-01-20",
           tags: ["Machine Learning", "Healthcare", "AI"],
-          description: "A comprehensive study on ML applications in healthcare diagnostics and treatment optimization."
+          description: "A comprehensive study on ML applications in healthcare diagnostics and treatment optimization.",
+          progress: 80
         }
       ]
     };
@@ -69,85 +74,190 @@ const apiService = {
         completedReviews: 67,
         pendingReviews: 22,
         publishedManuscripts: 134,
-        underReview: 15
+        underReview: 15,
+        draftArticles: 4
       }
     };
   }
 };
 
-// Mock Manuscript Card Component
-const ManuscriptCard = ({ manuscript, role }) => (
-  <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-6 border border-gray-200 hover:shadow-md transition-all duration-300">
-    <div className="flex items-start justify-between mb-4">
-      <h3 className="font-semibold text-gray-800 text-lg leading-tight pr-4">
-        {manuscript.title}
-      </h3>
-      <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
-        manuscript.status === 'pending_review' 
-          ? 'bg-blue-100 text-blue-800' 
-          : manuscript.status === 'review_assigned'
-          ? 'bg-purple-100 text-purple-800'
-          : 'bg-gray-100 text-gray-800'
-      }`}>
-        {manuscript.status === 'pending_review' ? 'Pending Review' : 
-         manuscript.status === 'review_assigned' ? 'Review Assigned' : 
-         manuscript.status}
-      </span>
+// Enhanced Stat Card
+const StatCard = ({ title, value, change, changeType, icon: Icon, gradient }) => (
+  <div className={`relative overflow-hidden rounded-2xl p-6 ${gradient} shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1`}>
+    <div className="absolute top-0 right-0 w-32 h-32 opacity-10">
+      <div className="w-full h-full bg-white rounded-full transform translate-x-8 -translate-y-8"></div>
     </div>
-    
-    <p className="text-gray-600 mb-4 text-sm">
-      {manuscript.description}
-    </p>
-    
-    <div className="flex items-center text-sm text-gray-500 mb-4">
-      <Users className="w-4 h-4 mr-1" />
-      <span>Authors: {manuscript.authors.join(', ')}</span>
-    </div>
-    
-    <div className="flex items-center justify-between">
-      <div className="flex flex-wrap gap-2">
-        {manuscript.tags.map((tag, index) => (
-          <span key={index} className="px-2 py-1 bg-white rounded-full text-xs text-gray-600 border">
-            {tag}
-          </span>
-        ))}
-      </div>
-      <div className="flex space-x-2 ml-4">
-        {role === 'reviewer' ? (
-          <>
-            <button className="flex items-center px-3 py-1 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-              <Eye className="w-4 h-4 mr-1" />
-              Review
-            </button>
-            <button className="flex items-center px-3 py-1 text-green-600 hover:bg-green-50 rounded-lg transition-colors">
-              <CheckCircle className="w-4 h-4 mr-1" />
-              Accept
-            </button>
-          </>
-        ) : (
-          <>
-            <button className="flex items-center px-3 py-1 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-              <Edit className="w-4 h-4 mr-1" />
-              Edit
-            </button>
-            <button className="flex items-center px-3 py-1 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
-              <Eye className="w-4 h-4 mr-1" />
-              View
-            </button>
-          </>
+    <div className="relative z-10">
+      <div className="flex items-center justify-between mb-4">
+        <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm">
+          <Icon className="w-6 h-6 text-white" />
+        </div>
+        {change && (
+          <div className={`flex items-center text-white text-sm font-medium px-3 py-1 rounded-full bg-white/20`}>
+            {changeType === 'up' ? (
+              <TrendingUp className="w-4 h-4 mr-1" />
+            ) : (
+              <TrendingDown className="w-4 h-4 mr-1" />
+            )}
+            {change}
+          </div>
         )}
       </div>
-    </div>
-    
-    <div className="mt-4 pt-3 border-t border-gray-200 text-xs text-gray-500">
-      Submitted: {manuscript.submissionDate}
+      <div className="text-white text-4xl font-bold mb-2">{value}</div>
+      <div className="text-white/90 text-sm font-medium">{title}</div>
     </div>
   </div>
 );
 
+// Activity Item
+const ActivityItem = ({ activity }) => {
+  const statusDots = {
+    success: 'bg-green-500',
+    info: 'bg-blue-500',
+    warning: 'bg-orange-500',
+    error: 'bg-red-500'
+  };
+
+  return (
+    <div className="flex items-start space-x-4 p-4 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer group">
+      <div className="relative">
+        <div className={`w-3 h-3 rounded-full ${statusDots[activity.status]} ring-4 ring-white`}></div>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+          {activity.description}
+        </p>
+        <p className="text-xs text-gray-500 mt-1">{activity.timestamp}</p>
+      </div>
+      <ArrowRight className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+    </div>
+  );
+};
+
+// Alert Card
+const AlertCard = ({ alert, onDismiss }) => {
+  const alertStyles = {
+    urgent: 'bg-red-50 border-red-300 text-red-800',
+    warning: 'bg-orange-50 border-orange-300 text-orange-800',
+    info: 'bg-blue-50 border-blue-300 text-blue-800'
+  };
+
+  const alertIcons = {
+    urgent: AlertTriangle,
+    warning: Clock,
+    info: Bell
+  };
+
+  const Icon = alertIcons[alert.type] || Bell;
+
+  return (
+    <div className={`p-4 rounded-xl border-2 ${alertStyles[alert.type]} mb-3 hover:shadow-md transition-all`}>
+      <div className="flex items-start justify-between">
+        <div className="flex items-start space-x-3">
+          <Icon className="w-5 h-5 mt-0.5 flex-shrink-0" />
+          <div>
+            <h4 className="font-semibold text-sm mb-1">{alert.title}</h4>
+            <p className="text-xs opacity-90">{alert.message}</p>
+          </div>
+        </div>
+        <button 
+          onClick={() => onDismiss(alert.id)}
+          className="text-current opacity-50 hover:opacity-100 transition-opacity"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Quick Action Button
+const QuickActionButton = ({ icon: Icon, label, onClick, color = "blue" }) => {
+  const colorClasses = {
+    blue: "bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200",
+    green: "bg-green-50 text-green-600 hover:bg-green-100 border-green-200",
+    purple: "bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-200"
+  };
+
+  return (
+    <button 
+      onClick={onClick}
+      className={`flex items-center space-x-2 px-4 py-3 rounded-xl border-2 ${colorClasses[color]} transition-all hover:shadow-md transform hover:-translate-y-0.5 font-medium text-sm`}
+    >
+      <Icon className="w-5 h-5" />
+      <span>{label}</span>
+    </button>
+  );
+};
+
+// Manuscript Card (Compact)
+const ManuscriptCardCompact = ({ manuscript, role }) => {
+  const statusColors = {
+    pending_review: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    review_assigned: 'bg-blue-100 text-blue-800 border-blue-200',
+    revision_required: 'bg-orange-100 text-orange-800 border-orange-200',
+    published: 'bg-green-100 text-green-800 border-green-200'
+  };
+
+  return (
+    <div className="bg-white rounded-xl p-5 border-2 border-gray-100 hover:border-blue-300 hover:shadow-lg transition-all">
+      <div className="flex items-start justify-between mb-3">
+        <h3 className="font-semibold text-gray-900 text-sm line-clamp-2 flex-1 pr-2">
+          {manuscript.title}
+        </h3>
+        <span className={`px-2 py-1 rounded-lg text-xs font-medium whitespace-nowrap border ${statusColors[manuscript.status]}`}>
+          {manuscript.status.replace('_', ' ')}
+        </span>
+      </div>
+      
+      <div className="flex items-center text-xs text-gray-500 mb-3">
+        <Users className="w-3 h-3 mr-1" />
+        <span className="truncate">{manuscript.authors.join(', ')}</span>
+      </div>
+      
+      <div className="mb-3">
+        <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+          <span>Progress</span>
+          <span className="font-semibold">{manuscript.progress}%</span>
+        </div>
+        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-300"
+            style={{ width: `${manuscript.progress}%` }}
+          />
+        </div>
+      </div>
+      
+      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+        <span className="text-xs text-gray-500">{manuscript.submissionDate}</span>
+        <div className="flex space-x-2">
+          {role === 'reviewer' ? (
+            <>
+              <button className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                <Eye className="w-4 h-4" />
+              </button>
+              <button className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors">
+                <CheckCircle className="w-4 h-4" />
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                <Edit className="w-4 h-4" />
+              </button>
+              <button className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                <Eye className="w-4 h-4" />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const Dashboard = () => {
-  const { user, logout, currentRole, switchRole } = useAuth(); // Use the real useAuth hook
+  const { user, logout, currentRole, switchRole } = useAuth();
   const [manuscripts, setManuscripts] = useState([]);
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
@@ -156,6 +266,10 @@ const Dashboard = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [error, setError] = useState('');
   const [roleState, setRoleState] = useState(currentRole || 'publisher');
+  const [alerts, setAlerts] = useState([
+    { id: 1, type: 'urgent', title: 'Urgent Revision Required', message: 'Article requires revisions. Deadline in 2 days.' },
+    { id: 2, type: 'warning', title: 'Review Deadline', message: 'Review due in 3 days.' }
+  ]);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -187,11 +301,9 @@ const Dashboard = () => {
 
   const handleLogout = async () => {
     try {
-      await logout(); // This will now use the real logout from AuthContext
+      await logout();
     } catch (error) {
       console.error('Logout error:', error);
-      // Even if there's an error, the logout should clear the auth state
-      // and the routing will handle redirecting to login
     }
   };
 
@@ -217,62 +329,39 @@ const Dashboard = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const StatusCard = ({ title, value, change, icon: Icon, gradient, textColor = "text-white" }) => (
-    <div className={`relative overflow-hidden rounded-2xl p-6 ${gradient} shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1`}>
-      <div className="absolute top-0 right-0 w-32 h-32 opacity-10">
-        <div className="w-full h-full bg-white rounded-full transform translate-x-8 -translate-y-8"></div>
-      </div>
-      <div className="relative z-10">
-        <div className="flex items-center justify-between mb-4">
-          <div className={`p-3 rounded-xl bg-white/20 backdrop-blur-sm`}>
-            <Icon className={`w-6 h-6 ${textColor}`} />
-          </div>
-          {change && (
-            <div className={`flex items-center ${textColor} text-sm font-medium`}>
-              <TrendingUp className="w-4 h-4 mr-1" />
-              {change}%
-            </div>
-          )}
-        </div>
-        <div className={`${textColor} text-3xl font-bold mb-1`}>
-          {typeof value === 'number' && value > 1000 ? `${(value/1000).toFixed(1)}k` : value}
-        </div>
-        <div className={`${textColor} opacity-90 text-sm font-medium`}>
-          {title}
-        </div>
-      </div>
-    </div>
-  );
+  const dismissAlert = (alertId) => {
+    setAlerts(alerts.filter(a => a.id !== alertId));
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading your dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
       {/* Header */}
-      <nav className="bg-white/80 backdrop-blur-lg shadow-sm border-b border-white/20 sticky top-0 z-50">
+      <nav className="bg-white/80 backdrop-blur-lg shadow-sm border-b border-white/20 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl mr-3">
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl">
                 <BookOpen className="w-6 h-6 text-white" />
               </div>
               <h1 className="text-xl font-bold text-gray-800">Journal Platform</h1>
             </div>
             
-            <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-4">
               <div className="flex bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => handleRoleSwitch('publisher')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                     roleState === 'publisher'
                       ? 'bg-blue-600 text-white shadow-md'
                       : 'text-gray-600 hover:text-gray-800'
@@ -282,7 +371,7 @@ const Dashboard = () => {
                 </button>
                 <button
                   onClick={() => handleRoleSwitch('reviewer')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
                     roleState === 'reviewer'
                       ? 'bg-purple-600 text-white shadow-md'
                       : 'text-gray-600 hover:text-gray-800'
@@ -292,22 +381,27 @@ const Dashboard = () => {
                 </button>
               </div>
 
+              <button className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              </button>
+
               <div className="flex items-center space-x-3">
-                <span className="text-gray-700 font-medium">Welcome, {user?.fullName || 'User'}</span>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  roleState === 'reviewer' 
-                    ? 'bg-purple-100 text-purple-800' 
-                    : 'bg-blue-100 text-blue-800'
-                }`}>
-                  {roleState}
-                </span>
-                <button 
-                  onClick={handleLogout}
-                  className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all duration-200 font-medium"
-                >
-                  Logout
-                </button>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-gray-800">{user?.fullName || 'Dr. User'}</p>
+                  <p className="text-xs text-gray-500">{roleState}</p>
+                </div>
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
+                  {user?.fullName?.charAt(0) || 'U'}
+                </div>
               </div>
+
+              <button 
+                onClick={handleLogout}
+                className="ml-4 px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+              >
+                Logout
+              </button>
             </div>
           </div>
         </div>
@@ -323,191 +417,261 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Main Stats Cards */}
+        {/* Welcome Section */}
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome back!</h1>
+            <p className="text-gray-600">Here's what's happening with your submissions today</p>
+          </div>
+          
+          {roleState === 'publisher' && (
+            <button 
+              onClick={() => setShowSubmissionForm(true)}
+              className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:shadow-xl transition-all transform hover:-translate-y-0.5 font-semibold"
+            >
+              <Upload className="w-5 h-5" />
+              <span>Submit New Manuscript</span>
+            </button>
+          )}
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {roleState === 'publisher' ? (
+            <>
+              <StatCard 
+                title="Draft Articles"
+                value={stats.draftArticles || 0}
+                change="+2 this week"
+                changeType="up"
+                icon={FileText}
+                gradient="bg-gradient-to-br from-blue-500 to-blue-600"
+              />
+              <StatCard 
+                title="Under Review"
+                value={stats.underReview || 0}
+                change="3 urgent"
+                changeType="down"
+                icon={Clock}
+                gradient="bg-gradient-to-br from-orange-500 to-orange-600"
+              />
+              <StatCard 
+                title="Published"
+                value={stats.publishedManuscripts || 0}
+                change="+1 this month"
+                changeType="up"
+                icon={CheckCircle}
+                gradient="bg-gradient-to-br from-green-500 to-green-600"
+              />
+              <StatCard 
+                title="Total Submissions"
+                value={stats.totalManuscripts || 0}
+                change="+15%"
+                changeType="up"
+                icon={BarChart3}
+                gradient="bg-gradient-to-br from-purple-500 to-purple-600"
+              />
+            </>
+          ) : (
+            <>
+              <StatCard 
+                title="Assigned Reviews"
+                value={stats.pendingReviews || 0}
+                change="5 due soon"
+                changeType="down"
+                icon={FileText}
+                gradient="bg-gradient-to-br from-blue-500 to-blue-600"
+              />
+              <StatCard 
+                title="Completed"
+                value={stats.completedReviews || 0}
+                change="+8 this month"
+                changeType="up"
+                icon={CheckCircle}
+                gradient="bg-gradient-to-br from-green-500 to-green-600"
+              />
+              <StatCard 
+                title="In Progress"
+                value="5"
+                change="2 due this week"
+                changeType="down"
+                icon={Activity}
+                gradient="bg-gradient-to-br from-orange-500 to-orange-600"
+              />
+              <StatCard 
+                title="Total Reviews"
+                value={stats.totalReviews || 0}
+                change="+12%"
+                changeType="up"
+                icon={BarChart3}
+                gradient="bg-gradient-to-br from-purple-500 to-purple-600"
+              />
+            </>
+          )}
+        </div>
+
+        {/* Quick Actions */}
         <div className="mb-8">
-          <div className="bg-white rounded-3xl p-8 shadow-lg border border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-700 mb-6">
-              {roleState === 'publisher' ? 'Manuscript Distribution' : 'Review Distribution'}
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {roleState === 'publisher' ? (
-                <>
-                  <StatusCard 
-                    title="Total Manuscripts"
-                    value={stats.totalManuscripts || 0}
-                    change={15}
-                    icon={FileText}
-                    gradient="bg-gradient-to-r from-blue-500 to-blue-600"
-                  />
-                  <StatusCard 
-                    title="Published"
-                    value={stats.publishedManuscripts || 0}
-                    change={25}
-                    icon={CheckCircle}
-                    gradient="bg-gradient-to-r from-green-500 to-green-600"
-                  />
-                  <StatusCard 
-                    title="Under Review"
-                    value={stats.underReview || 0}
-                    change={10}
-                    icon={Clock}
-                    gradient="bg-gradient-to-r from-yellow-500 to-yellow-600"
-                  />
-                  <StatusCard 
-                    title="Pending"
-                    value={stats.pendingReviews || 0}
-                    change={8}
-                    icon={Upload}
-                    gradient="bg-gradient-to-r from-purple-500 to-purple-600"
-                  />
-                </>
-              ) : (
-                <>
-                  <StatusCard 
-                    title="Total Manuscripts"
-                    value={stats.totalManuscripts || 0}
-                    change={15}
-                    icon={FileText}
-                    gradient="bg-gradient-to-r from-blue-500 to-blue-600"
-                  />
-                  <StatusCard 
-                    title="Total Reviews"
-                    value={stats.totalReviews || 0}
-                    change={25}
-                    icon={Users}
-                    gradient="bg-gradient-to-r from-purple-500 to-purple-600"
-                  />
-                  <StatusCard 
-                    title="Completed"
-                    value={stats.completedReviews || 0}
-                    change={30}
-                    icon={CheckSquare}
-                    gradient="bg-gradient-to-r from-green-500 to-green-600"
-                  />
-                  <StatusCard 
-                    title="Pending"
-                    value={stats.pendingReviews || 0}
-                    change={5}
-                    icon={Clock}
-                    gradient="bg-gradient-to-r from-orange-500 to-orange-600"
-                  />
-                </>
-              )}
-            </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <QuickActionButton 
+              icon={Upload}
+              label="Submit New Manuscript"
+              onClick={() => setShowSubmissionForm(true)}
+              color="blue"
+            />
+            <QuickActionButton 
+              icon={Search}
+              label="Search Submissions"
+              onClick={() => {}}
+              color="purple"
+            />
+            <QuickActionButton 
+              icon={MessageSquare}
+              label="View Messages"
+              onClick={() => {}}
+              color="green"
+            />
           </div>
         </div>
 
-        {/* Review/Manuscript Management Section */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">
-                {roleState === 'publisher' ? 'My Manuscripts' : 'Review Assignments'}
-              </h2>
-              
-              {roleState === 'publisher' && (
-                <button 
-                  onClick={() => setShowSubmissionForm(true)}
-                  className="mt-4 sm:mt-0 flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Submit New Manuscript
-                </button>
-              )}
-            </div>
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Manuscripts & Search */}
+          <div className="lg:col-span-2 space-y-8">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+              <div className="px-6 py-4 border-b border-gray-100">
+                <h2 className="text-lg font-bold text-gray-900 mb-4">
+                  {roleState === 'publisher' ? 'My Manuscripts' : 'Review Assignments'}
+                </h2>
 
-            <div className="mt-4 flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Search manuscripts..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input
+                      type="text"
+                      placeholder="Search manuscripts..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <div className="relative">
+                    <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="all">All Status</option>
+                      <option value="pending_review">Pending Review</option>
+                      <option value="review_assigned">Review Assigned</option>
+                      <option value="published">Published</option>
+                    </select>
+                  </div>
+                </div>
               </div>
-              
-              <div className="relative">
-                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="all">All Status</option>
-                  <option value="published">Published</option>
-                  <option value="under_review">Under Review</option>
-                  <option value="pending_review">Pending Review</option>
-                  {roleState === 'reviewer' && (
-                    <option value="assigned">Assigned</option>
-                  )}
-                </select>
-              </div>
-            </div>
-          </div>
 
-          <div className="p-6">
-            {filteredManuscripts.length > 0 ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {filteredManuscripts.map((manuscript) => (
-                  <ManuscriptCard 
-                    key={manuscript.id} 
-                    manuscript={manuscript} 
-                    role={roleState}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  {roleState === 'publisher' ? 'No manuscripts yet' : 'No reviews assigned'}
-                </h3>
-                <p className="text-gray-500 mb-4">
-                  {roleState === 'publisher' 
-                    ? 'Get started by submitting your first manuscript' 
-                    : 'Check back later for new review assignments'
-                  }
-                </p>
-                {roleState === 'publisher' && (
-                  <button
-                    onClick={() => setShowSubmissionForm(true)}
-                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Submit Manuscript
-                  </button>
+              <div className="p-6">
+                {filteredManuscripts.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filteredManuscripts.map((manuscript) => (
+                      <ManuscriptCardCompact 
+                        key={manuscript.id} 
+                        manuscript={manuscript} 
+                        role={roleState}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      {roleState === 'publisher' ? 'No manuscripts yet' : 'No reviews assigned'}
+                    </h3>
+                    <p className="text-gray-500 mb-4">
+                      {roleState === 'publisher' 
+                        ? 'Get started by submitting your first manuscript' 
+                        : 'Check back later for new review assignments'
+                      }
+                    </p>
+                    {roleState === 'publisher' && (
+                      <button
+                        onClick={() => setShowSubmissionForm(true)}
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Submit Manuscript
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
+            </div>
+          </div>
+
+          {/* Right Column - Alerts */}
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center space-x-2 mb-4">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+                <h2 className="text-lg font-bold text-gray-900">Urgent Alerts</h2>
+              </div>
+              {alerts.length > 0 ? (
+                <div>
+                  {alerts.map((alert) => (
+                    <AlertCard key={alert.id} alert={alert} onDismiss={dismissAlert} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">No urgent alerts</p>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg p-6 text-white">
+              <div className="flex items-center space-x-2 mb-4">
+                <Calendar className="w-5 h-5" />
+                <h3 className="font-bold">Upcoming Deadlines</h3>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between py-2 border-b border-white/20">
+                  <span className="text-sm">Review Due</span>
+                  <span className="text-sm font-semibold">2 days</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-white/20">
+                  <span className="text-sm">Revision Required</span>
+                  <span className="text-sm font-semibold">5 days</span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-sm">Resubmission</span>
+                  <span className="text-sm font-semibold">7 days</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Manuscript Submission Modal */}
-      {/* Manuscript Submission Modal */}
-{showSubmissionForm && (
-  <div className="fixed inset-0 z-50 overflow-y-auto">
-    <div className="flex items-center justify-center min-h-screen px-4">
-      <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity" onClick={() => setShowSubmissionForm(false)}></div>
-      <div className="relative bg-white rounded-2xl shadow-xl max-w-7xl w-full max-h-[90vh] overflow-y-auto z-50">
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
-          <h2 className="text-2xl font-bold text-gray-800">Submit New Manuscript</h2>
-          <button
-            onClick={() => setShowSubmissionForm(false)}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
+      {showSubmissionForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+          <div className="min-h-screen flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto relative">
+              <button
+                onClick={() => setShowSubmissionForm(false)}
+                className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg z-10"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+              <SubmissionSteps />
+            </div>
+          </div>
         </div>
-        <div className="p-6">
-          <SubmissionSteps />
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
     </div>
   );
 };
