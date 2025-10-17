@@ -13,28 +13,42 @@ import {
   AlertTriangle,
   TrendingUp,
   TrendingDown,
-  Globe,
-  Calendar,
-  Award,
-  Eye,
-  ThumbsUp,
-  BarChart3,
-  PieChart,
-  Activity,
-  CreditCard,
-  MapPin,
-  Edit,
-  MoreHorizontal,
+  Menu,
   X,
-  User,
-  Tag,
-  UploadCloud,
+  Focus,
+  Scale,
+  Lock,
+  ClipboardList,
+  DollarSign,
+  AlertCircle,
+  Settings,
+  Zap,
+  Mail,
+  ChevronDown,
+  ChevronRight,
   Bell,
   MessageSquare,
-  ArrowRight
+  ArrowRight,
+  BarChart3,
+  Activity,
+  Calendar,
+  Eye,
+  Edit
 } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
-import SubmissionSteps from '../SubmissionSteps';
+
+// Mock Auth Context
+const AuthContext = React.createContext();
+const useAuth = () => {
+  const [user] = useState({ fullName: 'Dr. User' });
+  const [currentRole, setCurrentRole] = useState('reviewer');
+  
+  return {
+    user,
+    currentRole,
+    switchRole: setCurrentRole,
+    logout: () => console.log('Logging out...')
+  };
+};
 
 // Mock API Service
 const apiService = {
@@ -79,6 +93,222 @@ const apiService = {
       }
     };
   }
+};
+
+// Sidebar Component
+const Sidebar = ({ isOpen, setIsOpen, currentPage, setCurrentPage }) => {
+  const [expandedMenu, setExpandedMenu] = useState(null);
+
+  const menuItems = [
+    {
+      id: 'dashboard',
+      label: 'Dashboard',
+      icon: BarChart3,
+      href: '#'
+    },
+    {
+      id: 'editorial',
+      label: 'Editorial Team',
+      icon: Users,
+      submenu: [
+        { id: 'team-members', label: 'Team Members', href: '#' },
+        { id: 'roles', label: 'Roles & Permissions', href: '#' }
+      ]
+    },
+    {
+      id: 'reviewers',
+      label: 'Peer Reviewers',
+      icon: ClipboardList,
+      submenu: [
+        { id: 'reviewer-list', label: 'Reviewer Directory', href: '#' },
+        { id: 'reviewer-requests', label: 'Review Requests', href: '#' },
+        { id: 'reviewer-stats', label: 'Performance Stats', href: '#' }
+      ]
+    },
+    {
+      id: 'scope',
+      label: 'Focus & Scope',
+      icon: Focus,
+      href: '#'
+    },
+    {
+      id: 'guidelines',
+      label: 'Author Guidelines',
+      icon: BookOpen,
+      submenu: [
+        { id: 'manuscript-format', label: 'Manuscript Format', href: '#' },
+        { id: 'templates', label: 'Templates', href: '#' },
+        { id: 'faq', label: 'FAQ', href: '#' }
+      ]
+    },
+    {
+      id: 'ethics',
+      label: 'Publication Ethics',
+      icon: Scale,
+      href: '#'
+    },
+    {
+      id: 'access',
+      label: 'Open Access Policy',
+      icon: Lock,
+      href: '#'
+    },
+    {
+      id: 'process',
+      label: 'Peer Review Process',
+      icon: ClipboardList,
+      href: '#'
+    },
+    {
+      id: 'submissions',
+      label: 'Online Submissions',
+      icon: FileText,
+      href: '#'
+    },
+    {
+      id: 'fees',
+      label: 'Publication Fees',
+      icon: DollarSign,
+      submenu: [
+        { id: 'fee-schedule', label: 'Fee Schedule', href: '#' },
+        { id: 'payment', label: 'Payment Methods', href: '#' },
+        { id: 'waivers', label: 'Fee Waivers', href: '#' }
+      ]
+    },
+    {
+      id: 'plagiarism',
+      label: 'Plagiarism Policy',
+      icon: AlertCircle,
+      href: '#'
+    },
+    {
+      id: 'indexing',
+      label: 'Abstracting & Indexing',
+      icon: Search,
+      href: '#'
+    },
+    {
+      id: 'contact',
+      label: 'Contact',
+      icon: Mail,
+      submenu: [
+        { id: 'general', label: 'General Inquiry', href: '#' },
+        { id: 'support', label: 'Support', href: '#' },
+        { id: 'feedback', label: 'Feedback', href: '#' }
+      ]
+    }
+  ];
+
+  const handleMenuClick = (item) => {
+    if (item.submenu) {
+      setExpandedMenu(expandedMenu === item.id ? null : item.id);
+    } else {
+      setCurrentPage(item.id);
+      setExpandedMenu(null);
+    }
+  };
+
+  const handleSubmenuClick = (submenu) => {
+    setCurrentPage(submenu.id);
+  };
+
+  const toggleSidebar = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Toggle clicked! Current state:', isOpen);
+    setIsOpen(!isOpen);
+  };
+
+  return (
+    <aside
+      className={`fixed left-0 top-0 h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 border-r border-slate-700 overflow-y-auto z-40 transition-all duration-300 ${
+        isOpen ? 'w-64' : 'w-20'
+      }`}
+    >
+      <div className="p-6 border-b border-slate-700 sticky top-0 bg-slate-900/95 backdrop-blur-sm z-10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3 flex-1 min-w-0">
+            <div className="w-10 h-10 bg-gradient-to-r from-blue-400 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+              <BookOpen className="w-6 h-6 text-white" />
+            </div>
+            {isOpen && (
+              <div className="text-left overflow-hidden">
+                <h1 className="text-white font-bold text-lg whitespace-nowrap">Journal</h1>
+                <p className="text-xs text-slate-400 whitespace-nowrap">Platform</p>
+              </div>
+            )}
+          </div>
+          <button 
+            onClick={toggleSidebar}
+            className="p-2 hover:bg-slate-700/50 rounded-lg transition-colors text-slate-300 hover:text-white flex-shrink-0 ml-2"
+            title={isOpen ? "Collapse sidebar" : "Expand sidebar"}
+            type="button"
+          >
+            {isOpen ? (
+              <ChevronDown className="w-5 h-5 rotate-90" />
+            ) : (
+              <ChevronRight className="w-5 h-5" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      <nav className="p-4 pb-20">
+        <div className="space-y-2">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isExpanded = expandedMenu === item.id;
+            const isActive = currentPage === item.id;
+
+            return (
+              <div key={item.id}>
+                <button
+                  onClick={() => handleMenuClick(item)}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 ${
+                    isActive
+                      ? 'bg-blue-600 text-white shadow-lg'
+                      : 'text-slate-300 hover:bg-slate-700/50'
+                  }`}
+                  title={!isOpen ? item.label : ''}
+                >
+                  <div className="flex items-center space-x-3">
+                    <Icon className="w-5 h-5 flex-shrink-0" />
+                    {isOpen && <span className="text-sm font-medium whitespace-nowrap">{item.label}</span>}
+                  </div>
+                  {item.submenu && isOpen && (
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform duration-200 flex-shrink-0 ${
+                        isExpanded ? 'rotate-180' : ''
+                      }`}
+                    />
+                  )}
+                </button>
+
+                {item.submenu && isExpanded && isOpen && (
+                  <div className="ml-4 mt-2 space-y-1 border-l border-slate-600 pl-2">
+                    {item.submenu.map((submenu) => (
+                      <button
+                        key={submenu.id}
+                        onClick={() => handleSubmenuClick(submenu)}
+                        className={`w-full flex items-center space-x-2 px-4 py-2 rounded-lg text-sm transition-all duration-200 ${
+                          currentPage === submenu.id
+                            ? 'bg-blue-500/30 text-blue-300'
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/30'
+                        }`}
+                      >
+                        <ChevronRight className="w-4 h-4 flex-shrink-0" />
+                        <span className="whitespace-nowrap">{submenu.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </nav>
+    </aside>
+  );
 };
 
 // Enhanced Stat Card
@@ -256,6 +486,15 @@ const ManuscriptCardCompact = ({ manuscript, role }) => {
   );
 };
 
+// Mock Submission Steps Component
+const SubmissionSteps = () => (
+  <div className="p-8">
+    <h2 className="text-2xl font-bold mb-4">Submit New Manuscript</h2>
+    <p className="text-gray-600">Submission form will appear here...</p>
+  </div>
+);
+
+// Main Dashboard Component
 const Dashboard = () => {
   const { user, logout, currentRole, switchRole } = useAuth();
   const [manuscripts, setManuscripts] = useState([]);
@@ -265,10 +504,17 @@ const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [error, setError] = useState('');
-  const [roleState, setRoleState] = useState(currentRole || 'publisher');
+  const [roleState, setRoleState] = useState(currentRole || 'reviewer');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [currentPage, setCurrentPage] = useState('dashboard');
   const [alerts, setAlerts] = useState([
     { id: 1, type: 'urgent', title: 'Urgent Revision Required', message: 'Article requires revisions. Deadline in 2 days.' },
     { id: 2, type: 'warning', title: 'Review Deadline', message: 'Review due in 3 days.' }
+  ]);
+  const [activities] = useState([
+    { id: 1, description: 'Review completed for React article', timestamp: '3 hours ago', status: 'success' },
+    { id: 2, description: 'Article published', timestamp: '5 hours ago', status: 'info' },
+    { id: 3, description: 'New manuscript submitted', timestamp: '1 day ago', status: 'info' }
   ]);
 
   useEffect(() => {
@@ -307,21 +553,6 @@ const Dashboard = () => {
     }
   };
 
-  const handleManuscriptSubmit = async () => {
-    try {
-      const [manuscriptsResponse, statsResponse] = await Promise.all([
-        apiService.getManuscripts(),
-        apiService.getUserStats()
-      ]);
-      
-      setManuscripts(manuscriptsResponse.manuscripts || []);
-      setStats(statsResponse.stats || {});
-      setShowSubmissionForm(false);
-    } catch (error) {
-      console.error('Failed to refresh data:', error);
-    }
-  };
-
   const filteredManuscripts = manuscripts.filter(manuscript => {
     const matchesSearch = manuscript.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          manuscript.authors.some(author => author.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -345,318 +576,350 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
-      {/* Header */}
-      <nav className="bg-white/80 backdrop-blur-lg shadow-sm border-b border-white/20 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl">
-                <BookOpen className="w-6 h-6 text-white" />
-              </div>
-              <h1 className="text-xl font-bold text-gray-800">Journal Platform</h1>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className="flex bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => handleRoleSwitch('publisher')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    roleState === 'publisher'
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'text-gray-600 hover:text-gray-800'
-                  }`}
-                >
-                  Publisher
-                </button>
-                <button
-                  onClick={() => handleRoleSwitch('reviewer')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    roleState === 'reviewer'
-                      ? 'bg-purple-600 text-white shadow-md'
-                      : 'text-gray-600 hover:text-gray-800'
-                  }`}
-                >
-                  Reviewer
-                </button>
-              </div>
+    <div className="flex h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
+      {/* Sidebar */}
+      <Sidebar 
+        isOpen={sidebarOpen} 
+        setIsOpen={setSidebarOpen}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+      />
 
-              <button className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
-
-              <div className="flex items-center space-x-3">
-                <div className="text-right">
-                  <p className="text-sm font-semibold text-gray-800">{user?.fullName || 'Dr. User'}</p>
-                  <p className="text-xs text-gray-500">{roleState}</p>
+      {/* Main Content */}
+      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
+        {/* Header */}
+        <nav className="bg-white/80 backdrop-blur-lg shadow-sm border-b border-white/20 sticky top-0 z-30">
+          <div className="px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <h2 className="text-lg font-bold text-gray-800">Dashboard</h2>
+              
+              <div className="flex items-center space-x-4">
+                <div className="flex bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => handleRoleSwitch('publisher')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      roleState === 'publisher'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    Publisher
+                  </button>
+                  <button
+                    onClick={() => handleRoleSwitch('reviewer')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                      roleState === 'reviewer'
+                        ? 'bg-purple-600 text-white shadow-md'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    Reviewer
+                  </button>
                 </div>
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
-                  {user?.fullName?.charAt(0) || 'U'}
+
+                <button className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                  <Bell className="w-5 h-5" />
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                </button>
+
+                <div className="flex items-center space-x-3 pl-4 border-l border-gray-200">
+                  <div className="text-right hidden sm:block">
+                    <p className="text-sm font-semibold text-gray-800">{user?.fullName || 'Dr. User'}</p>
+                    <p className="text-xs text-gray-500">{roleState}</p>
+                  </div>
+                  <button 
+                    onClick={handleLogout}
+                    className="ml-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 font-medium border border-gray-300 rounded-lg hover:bg-gray-100 transition-all"
+                  >
+                    Logout
+                  </button>
                 </div>
               </div>
-
-              <button 
-                onClick={handleLogout}
-                className="ml-4 px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
-              >
-                Logout
-              </button>
             </div>
           </div>
-        </div>
-      </nav>
+        </nav>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-            <div className="flex items-center">
-              <AlertTriangle className="w-5 h-5 mr-2" />
-              {error}
-            </div>
-          </div>
-        )}
+        {/* Scrollable Content */}
+        <main className="flex-1 overflow-auto">
+          <div className="px-4 sm:px-6 lg:px-8 py-8">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+                <div className="flex items-center">
+                  <AlertTriangle className="w-5 h-5 mr-2" />
+                  {error}
+                </div>
+              </div>
+            )}
 
-        {/* Welcome Section */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome back!</h1>
-            <p className="text-gray-600">Here's what's happening with your submissions today</p>
-          </div>
-          
-          {roleState === 'publisher' && (
-            <button 
-              onClick={() => setShowSubmissionForm(true)}
-              className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:shadow-xl transition-all transform hover:-translate-y-0.5 font-semibold"
-            >
-              <Upload className="w-5 h-5" />
-              <span>Submit New Manuscript</span>
-            </button>
-          )}
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {roleState === 'publisher' ? (
-            <>
-              <StatCard 
-                title="Draft Articles"
-                value={stats.draftArticles || 0}
-                change="+2 this week"
-                changeType="up"
-                icon={FileText}
-                gradient="bg-gradient-to-br from-blue-500 to-blue-600"
-              />
-              <StatCard 
-                title="Under Review"
-                value={stats.underReview || 0}
-                change="3 urgent"
-                changeType="down"
-                icon={Clock}
-                gradient="bg-gradient-to-br from-orange-500 to-orange-600"
-              />
-              <StatCard 
-                title="Published"
-                value={stats.publishedManuscripts || 0}
-                change="+1 this month"
-                changeType="up"
-                icon={CheckCircle}
-                gradient="bg-gradient-to-br from-green-500 to-green-600"
-              />
-              <StatCard 
-                title="Total Submissions"
-                value={stats.totalManuscripts || 0}
-                change="+15%"
-                changeType="up"
-                icon={BarChart3}
-                gradient="bg-gradient-to-br from-purple-500 to-purple-600"
-              />
-            </>
-          ) : (
-            <>
-              <StatCard 
-                title="Assigned Reviews"
-                value={stats.pendingReviews || 0}
-                change="5 due soon"
-                changeType="down"
-                icon={FileText}
-                gradient="bg-gradient-to-br from-blue-500 to-blue-600"
-              />
-              <StatCard 
-                title="Completed"
-                value={stats.completedReviews || 0}
-                change="+8 this month"
-                changeType="up"
-                icon={CheckCircle}
-                gradient="bg-gradient-to-br from-green-500 to-green-600"
-              />
-              <StatCard 
-                title="In Progress"
-                value="5"
-                change="2 due this week"
-                changeType="down"
-                icon={Activity}
-                gradient="bg-gradient-to-br from-orange-500 to-orange-600"
-              />
-              <StatCard 
-                title="Total Reviews"
-                value={stats.totalReviews || 0}
-                change="+12%"
-                changeType="up"
-                icon={BarChart3}
-                gradient="bg-gradient-to-br from-purple-500 to-purple-600"
-              />
-            </>
-          )}
-        </div>
-
-        {/* Quick Actions */}
-        <div className="mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <QuickActionButton 
-              icon={Upload}
-              label="Submit New Manuscript"
-              onClick={() => setShowSubmissionForm(true)}
-              color="blue"
-            />
-            <QuickActionButton 
-              icon={Search}
-              label="Search Submissions"
-              onClick={() => {}}
-              color="purple"
-            />
-            <QuickActionButton 
-              icon={MessageSquare}
-              label="View Messages"
-              onClick={() => {}}
-              color="green"
-            />
-          </div>
-        </div>
-
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Manuscripts & Search */}
-          <div className="lg:col-span-2 space-y-8">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
-              <div className="px-6 py-4 border-b border-gray-100">
-                <h2 className="text-lg font-bold text-gray-900 mb-4">
-                  {roleState === 'publisher' ? 'My Manuscripts' : 'Review Assignments'}
-                </h2>
-
-                <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input
-                      type="text"
-                      placeholder="Search manuscripts..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
+            {currentPage === 'dashboard' ? (
+              <>
+                {/* Welcome Section */}
+                <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome back!</h1>
+                    <p className="text-gray-600">Here's what's happening with your submissions today</p>
                   </div>
                   
-                  <div className="relative">
-                    <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  {roleState === 'publisher' && (
+                    <button 
+                      onClick={() => setShowSubmissionForm(true)}
+                      className="mt-4 sm:mt-0 flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:shadow-xl transition-all transform hover:-translate-y-0.5 font-semibold w-fit"
                     >
-                      <option value="all">All Status</option>
-                      <option value="pending_review">Pending Review</option>
-                      <option value="review_assigned">Review Assigned</option>
-                      <option value="published">Published</option>
-                    </select>
-                  </div>
+                      <Upload className="w-5 h-5" />
+                      <span>Submit New Manuscript</span>
+                    </button>
+                  )}
                 </div>
-              </div>
 
-              <div className="p-6">
-                {filteredManuscripts.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {filteredManuscripts.map((manuscript) => (
-                      <ManuscriptCardCompact 
-                        key={manuscript.id} 
-                        manuscript={manuscript} 
-                        role={roleState}
+                {/* Stats Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                  {roleState === 'publisher' ? (
+                    <>
+                      <StatCard 
+                        title="Draft Articles"
+                        value={stats.draftArticles || 0}
+                        change="+2"
+                        changeType="up"
+                        icon={FileText}
+                        gradient="bg-gradient-to-br from-blue-500 to-blue-600"
                       />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      {roleState === 'publisher' ? 'No manuscripts yet' : 'No reviews assigned'}
-                    </h3>
-                    <p className="text-gray-500 mb-4">
-                      {roleState === 'publisher' 
-                        ? 'Get started by submitting your first manuscript' 
-                        : 'Check back later for new review assignments'
-                      }
-                    </p>
-                    {roleState === 'publisher' && (
-                      <button
-                        onClick={() => setShowSubmissionForm(true)}
-                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Submit Manuscript
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+                      <StatCard 
+                        title="Under Review"
+                        value={stats.underReview || 0}
+                        change="3"
+                        changeType="down"
+                        icon={Clock}
+                        gradient="bg-gradient-to-br from-orange-500 to-orange-600"
+                      />
+                      <StatCard 
+                        title="Published"
+                        value={stats.publishedManuscripts || 0}
+                        change="+1"
+                        changeType="up"
+                        icon={CheckCircle}
+                        gradient="bg-gradient-to-br from-green-500 to-green-600"
+                      />
+                      <StatCard 
+                        title="Total Submissions"
+                        value={stats.totalManuscripts || 0}
+                        change="+15"
+                        changeType="up"
+                        icon={BarChart3}
+                        gradient="bg-gradient-to-br from-purple-500 to-purple-600"
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <StatCard 
+                        title="Assigned Reviews"
+                        value={stats.pendingReviews || 0}
+                        change="5"
+                        changeType="down"
+                        icon={FileText}
+                        gradient="bg-gradient-to-br from-blue-500 to-blue-600"
+                      />
+                      <StatCard 
+                        title="Completed"
+                        value={stats.completedReviews || 0}
+                        change="+8"
+                        changeType="up"
+                        icon={CheckCircle}
+                        gradient="bg-gradient-to-br from-green-500 to-green-600"
+                      />
+                      <StatCard 
+                        title="In Progress"
+                        value="5"
+                        change="2"
+                        changeType="down"
+                        icon={Activity}
+                        gradient="bg-gradient-to-br from-orange-500 to-orange-600"
+                      />
+                      <StatCard 
+                        title="Total Reviews"
+                        value={stats.totalReviews || 0}
+                        change="+12"
+                        changeType="up"
+                        icon={BarChart3}
+                        gradient="bg-gradient-to-br from-purple-500 to-purple-600"
+                      />
+                    </>
+                  )}
+                </div>
 
-          {/* Right Column - Alerts */}
-          <div className="space-y-6">
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <div className="flex items-center space-x-2 mb-4">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
-                <h2 className="text-lg font-bold text-gray-900">Urgent Alerts</h2>
-              </div>
-              {alerts.length > 0 ? (
-                <div>
-                  {alerts.map((alert) => (
-                    <AlertCard key={alert.id} alert={alert} onDismiss={dismissAlert} />
-                  ))}
+                {/* Quick Actions */}
+                <div className="mb-8">
+                  <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <QuickActionButton 
+                      icon={Upload}
+                      label="Submit New Manuscript"
+                      onClick={() => setShowSubmissionForm(true)}
+                      color="blue"
+                    />
+                    <QuickActionButton 
+                      icon={Search}
+                      label="Search Submissions"
+                      onClick={() => {}}
+                      color="purple"
+                    />
+                    <QuickActionButton 
+                      icon={MessageSquare}
+                      label="View Messages"
+                      onClick={() => {}}
+                      color="green"
+                    />
+                  </div>
                 </div>
-              ) : (
-                <div className="text-center py-8">
-                  <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">No urgent alerts</p>
-                </div>
-              )}
-            </div>
 
-            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg p-6 text-white">
-              <div className="flex items-center space-x-2 mb-4">
-                <Calendar className="w-5 h-5" />
-                <h3 className="font-bold">Upcoming Deadlines</h3>
+                {/* Main Content Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  {/* Left Column - Manuscripts & Activity */}
+                  <div className="lg:col-span-2 space-y-8">
+                    {/* Recent Activity */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                      <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <h2 className="text-lg font-bold text-gray-900">Recent Activity</h2>
+                        <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                          View All
+                        </button>
+                      </div>
+                      <div className="p-2">
+                        {activities.slice(0, 3).map((activity) => (
+                          <ActivityItem key={activity.id} activity={activity} />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Manuscripts */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+                      <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                        <h2 className="text-lg font-bold text-gray-900 mb-4 sm:mb-0">
+                          {roleState === 'publisher' ? 'My Manuscripts' : 'Review Assignments'}
+                        </h2>
+
+                        <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                          <div className="relative flex-1 sm:flex-none">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                            <input
+                              type="text"
+                              placeholder="Search..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className="w-full sm:w-48 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            />
+                          </div>
+                          
+                          <div className="relative">
+                            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                            <select
+                              value={statusFilter}
+                              onChange={(e) => setStatusFilter(e.target.value)}
+                              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            >
+                              <option value="all">All Status</option>
+                              <option value="pending_review">Pending Review</option>
+                              <option value="review_assigned">Review Assigned</option>
+                              <option value="published">Published</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-6">
+                        {filteredManuscripts.length > 0 ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {filteredManuscripts.map((manuscript) => (
+                              <ManuscriptCardCompact 
+                                key={manuscript.id} 
+                                manuscript={manuscript} 
+                                role={roleState}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-12">
+                            <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">
+                              {roleState === 'publisher' ? 'No manuscripts yet' : 'No reviews assigned'}
+                            </h3>
+                            <p className="text-gray-500 mb-4">
+                              {roleState === 'publisher' 
+                                ? 'Get started by submitting your first manuscript' 
+                                : 'Check back later for new review assignments'
+                              }
+                            </p>
+                            {roleState === 'publisher' && (
+                              <button
+                                onClick={() => setShowSubmissionForm(true)}
+                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                              >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Submit Manuscript
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column - Alerts & Deadlines */}
+                  <div className="space-y-6">
+                    {/* Alerts */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                      <div className="flex items-center space-x-2 mb-4">
+                        <AlertTriangle className="w-5 h-5 text-red-600" />
+                        <h2 className="text-lg font-bold text-gray-900">Urgent Alerts</h2>
+                      </div>
+                      {alerts.length > 0 ? (
+                        <div>
+                          {alerts.map((alert) => (
+                            <AlertCard key={alert.id} alert={alert} onDismiss={dismissAlert} />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-2" />
+                          <p className="text-sm text-gray-600">No urgent alerts</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Upcoming Deadlines */}
+                    <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg p-6 text-white">
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Calendar className="w-5 h-5" />
+                        <h3 className="font-bold">Upcoming Deadlines</h3>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between py-2 border-b border-white/20">
+                          <span className="text-sm">Review Due</span>
+                          <span className="text-sm font-semibold">2 days</span>
+                        </div>
+                        <div className="flex items-center justify-between py-2 border-b border-white/20">
+                          <span className="text-sm">Revision Required</span>
+                          <span className="text-sm font-semibold">5 days</span>
+                        </div>
+                        <div className="flex items-center justify-between py-2">
+                          <span className="text-sm">Resubmission</span>
+                          <span className="text-sm font-semibold">7 days</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">{currentPage.replace('-', ' ').toUpperCase()}</h2>
+                <p className="text-gray-600">This section is coming soon. Content for <strong>{currentPage}</strong> will appear here.</p>
               </div>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between py-2 border-b border-white/20">
-                  <span className="text-sm">Review Due</span>
-                  <span className="text-sm font-semibold">2 days</span>
-                </div>
-                <div className="flex items-center justify-between py-2 border-b border-white/20">
-                  <span className="text-sm">Revision Required</span>
-                  <span className="text-sm font-semibold">5 days</span>
-                </div>
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-sm">Resubmission</span>
-                  <span className="text-sm font-semibold">7 days</span>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
-        </div>
+        </main>
       </div>
 
-      {/* Manuscript Submission Modal */}
+      {/* Submission Modal */}
       {showSubmissionForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
           <div className="min-h-screen flex items-center justify-center p-4">
