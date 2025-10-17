@@ -35,20 +35,8 @@ import {
   Eye,
   Edit
 } from 'lucide-react';
-
-// Mock Auth Context
-const AuthContext = React.createContext();
-const useAuth = () => {
-  const [user] = useState({ fullName: 'Dr. User' });
-  const [currentRole, setCurrentRole] = useState('reviewer');
-  
-  return {
-    user,
-    currentRole,
-    switchRole: setCurrentRole,
-    logout: () => console.log('Logging out...')
-  };
-};
+import { useAuth } from '../../contexts/AuthContext';
+import SubmissionSteps from '../SubmissionSteps';
 
 // Mock API Service
 const apiService = {
@@ -485,14 +473,6 @@ const ManuscriptCardCompact = ({ manuscript, role }) => {
     </div>
   );
 };
-
-// Mock Submission Steps Component
-const SubmissionSteps = () => (
-  <div className="p-8">
-    <h2 className="text-2xl font-bold mb-4">Submit New Manuscript</h2>
-    <p className="text-gray-600">Submission form will appear here...</p>
-  </div>
-);
 
 // Main Dashboard Component
 const Dashboard = () => {
