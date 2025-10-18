@@ -143,6 +143,7 @@ const manuscriptService = {
     return errors;
   },
 
+  // UPDATED: Abstract validation - REMOVED minimum word count
   validateAbstract(abstract) {
     const errors = [];
     
@@ -150,9 +151,7 @@ const manuscriptService = {
       errors.push('Abstract is required');
     } else {
       const wordCount = abstract.trim().split(/\s+/).length;
-      if (wordCount < 250) {
-        errors.push(`Abstract must be at least 250 words (current: ${wordCount} words)`);
-      } else if (wordCount > 300) {
+      if (wordCount > 300) {
         errors.push(`Abstract cannot exceed 300 words (current: ${wordCount} words)`);
       }
     }
@@ -186,12 +185,12 @@ const manuscriptService = {
     return errors;
   },
 
+  // UPDATED: References validation - REMOVED minimum count requirement
   validateReferences(references) {
     const errors = [];
     
-    if (!references || references.length < 20) {
-      errors.push(`Minimum 20 references required (current: ${references?.length || 0})`);
-    }
+    // References are now optional - no minimum requirement
+    // This method can be kept for backward compatibility or other checks
     
     return errors;
   },

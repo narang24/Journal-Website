@@ -17,109 +17,62 @@ import {
   Zap,
   Mail,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Upload,
+  User
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen, setIsOpen, currentPage, setCurrentPage }) => {
   const [expandedMenu, setExpandedMenu] = useState(null);
 
-  const menuItems = [
+  // Activity Section - User's active work
+  const activityItems = [
+    {
+      id: 'submissions',
+      label: 'Submissions',
+      icon: Upload,
+      href: '#'
+    },
+    {
+      id: 'profile',
+      label: 'Profile',
+      icon: User,
+      href: '#'
+    }
+  ];
+
+  // Info Section - Journal information and policies
+  const infoItems = [
     {
       id: 'editorial',
       label: 'Editorial Team',
       icon: Users,
-      submenu: [
-        { id: 'team-members', label: 'Team Members', href: '#' },
-        { id: 'roles', label: 'Roles & Permissions', href: '#' }
-      ]
+      href: '#'
     },
     {
       id: 'reviewers',
       label: 'Peer Reviewers',
       icon: ClipboardList,
-      submenu: [
-        { id: 'reviewer-list', label: 'Reviewer Directory', href: '#' },
-        { id: 'reviewer-requests', label: 'Review Requests', href: '#' },
-        { id: 'reviewer-stats', label: 'Performance Stats', href: '#' }
-      ]
-    },
-    {
-      id: 'scope',
-      label: 'Focus & Scope',
-      icon: Focus,
       href: '#'
     },
     {
-      id: 'guidelines',
-      label: 'Author Guidelines',
-      icon: BookOpen,
-      submenu: [
-        { id: 'manuscript-format', label: 'Manuscript Format', href: '#' },
-        { id: 'templates', label: 'Templates', href: '#' },
-        { id: 'faq', label: 'FAQ', href: '#' }
-      ]
-    },
-    {
-      id: 'ethics',
-      label: 'Publication Ethics',
+      id: 'policies',
+      label: 'Editorial Policies',
       icon: Scale,
-      href: '#'
-    },
-    {
-      id: 'access',
-      label: 'Open Access Policy',
-      icon: Lock,
-      href: '#'
-    },
-    {
-      id: 'process',
-      label: 'Peer Review Process',
-      icon: ClipboardList,
-      href: '#'
-    },
-    {
-      id: 'submissions',
-      label: 'Online Submissions',
-      icon: FileText,
-      href: '#'
-    },
-    {
-      id: 'fees',
-      label: 'Publication Fees',
-      icon: DollarSign,
       submenu: [
-        { id: 'fee-schedule', label: 'Fee Schedule', href: '#' },
-        { id: 'payment', label: 'Payment Methods', href: '#' },
-        { id: 'waivers', label: 'Fee Waivers', href: '#' }
+        { id: 'scope', label: 'Focus & Scope', href: '#' },
+        { id: 'process', label: 'Peer Review Process', href: '#' },
+        { id: 'access', label: 'Open Access Policy', href: '#' },
+        { id: 'ethics', label: 'Publication Ethics', href: '#' },
+        { id: 'plagiarism', label: 'Plagiarism Policy', href: '#' },
+        { id: 'ai-tools', label: 'AI Tools Policy', href: '#' }
       ]
-    },
-    {
-      id: 'plagiarism',
-      label: 'Plagiarism Policy',
-      icon: AlertCircle,
-      href: '#'
-    },
-    {
-      id: 'ai',
-      label: 'AI Tools Policy',
-      icon: Zap,
-      href: '#'
-    },
-    {
-      id: 'indexing',
-      label: 'Abstracting & Indexing',
-      icon: Search,
-      href: '#'
     },
     {
       id: 'contact',
       label: 'Contact',
       icon: Mail,
-      submenu: [
-        { id: 'general', label: 'General Inquiry', href: '#' },
-        { id: 'support', label: 'Support', href: '#' },
-        { id: 'feedback', label: 'Feedback', href: '#' }
-      ]
+      href: '#'
     }
   ];
 
@@ -134,6 +87,56 @@ const Sidebar = ({ isOpen, setIsOpen, currentPage, setCurrentPage }) => {
 
   const handleSubmenuClick = (submenu) => {
     setCurrentPage(submenu.id);
+  };
+
+  const renderMenuItem = (item) => {
+    const Icon = item.icon;
+    const isExpanded = expandedMenu === item.id;
+    const isActive = currentPage === item.id;
+
+    return (
+      <div key={item.id}>
+        <button
+          onClick={() => handleMenuClick(item)}
+          className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 ${
+            isActive
+              ? 'bg-blue-600 text-white shadow-lg'
+              : 'text-slate-300 hover:bg-slate-700/50'
+          }`}
+        >
+          <div className="flex items-center space-x-3">
+            <Icon className="w-5 h-5" />
+            <span className="text-sm font-medium">{item.label}</span>
+          </div>
+          {item.submenu && (
+            <ChevronDown
+              className={`w-4 h-4 transition-transform duration-200 ${
+                isExpanded ? 'rotate-180' : ''
+              }`}
+            />
+          )}
+        </button>
+
+        {item.submenu && isExpanded && (
+          <div className="ml-4 mt-2 space-y-1 border-l-2 border-slate-600 pl-3">
+            {item.submenu.map((submenu) => (
+              <button
+                key={submenu.id}
+                onClick={() => handleSubmenuClick(submenu)}
+                className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                  currentPage === submenu.id
+                    ? 'bg-blue-500/30 text-blue-300'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/30'
+                }`}
+              >
+                <div className="w-1 h-1 rounded-full bg-current"></div>
+                <span className="text-xs">{submenu.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -174,58 +177,27 @@ const Sidebar = ({ isOpen, setIsOpen, currentPage, setCurrentPage }) => {
         </div>
 
         {/* Menu Items */}
-        <nav className="p-4">
-          <div className="space-y-2">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isExpanded = expandedMenu === item.id;
-              const isActive = currentPage === item.id;
+        <nav className="p-4 pb-20">
+          {/* ACTIVITY SECTION */}
+          <div className="mb-6">
+            <div className="px-4 mb-3">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Activity</h3>
+              <div className="h-px bg-gradient-to-r from-slate-600 to-transparent mt-2"></div>
+            </div>
+            <div className="space-y-1">
+              {activityItems.map((item) => renderMenuItem(item))}
+            </div>
+          </div>
 
-              return (
-                <div key={item.id}>
-                  <button
-                    onClick={() => handleMenuClick(item)}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 ${
-                      isActive
-                        ? 'bg-blue-600 text-white shadow-lg'
-                        : 'text-slate-300 hover:bg-slate-700/50'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Icon className="w-5 h-5" />
-                      <span className="text-sm font-medium">{item.label}</span>
-                    </div>
-                    {item.submenu && (
-                      <ChevronDown
-                        className={`w-4 h-4 transition-transform duration-200 ${
-                          isExpanded ? 'rotate-180' : ''
-                        }`}
-                      />
-                    )}
-                  </button>
-
-                  {/* Submenu */}
-                  {item.submenu && isExpanded && (
-                    <div className="ml-4 mt-2 space-y-1 border-l border-slate-600 pl-2">
-                      {item.submenu.map((submenu) => (
-                        <button
-                          key={submenu.id}
-                          onClick={() => handleSubmenuClick(submenu)}
-                          className={`w-full flex items-center space-x-2 px-4 py-2 rounded-lg text-sm transition-all duration-200 ${
-                            currentPage === submenu.id
-                              ? 'bg-blue-500/30 text-blue-300'
-                              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/30'
-                          }`}
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                          <span>{submenu.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          {/* INFO SECTION */}
+          <div>
+            <div className="px-4 mb-3">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Info</h3>
+              <div className="h-px bg-gradient-to-r from-slate-600 to-transparent mt-2"></div>
+            </div>
+            <div className="space-y-1">
+              {infoItems.map((item) => renderMenuItem(item))}
+            </div>
           </div>
         </nav>
 
@@ -237,9 +209,6 @@ const Sidebar = ({ isOpen, setIsOpen, currentPage, setCurrentPage }) => {
           </button>
         </div>
       </aside>
-
-      {/* Main Content Wrapper (for reference in layout) */}
-      {/* Add md:ml-64 to your main content container */}
     </>
   );
 };

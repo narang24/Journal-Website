@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { ChevronRight, FileText, Upload, FileEdit, FolderPlus, CheckCircle, AlertCircle } from 'lucide-react';
+import { ChevronRight, FileText, Upload, FileEdit, FolderPlus, CheckCircle, AlertCircle, Loader } from 'lucide-react';
+import manuscriptService from '../services/manuscriptService';
 
-const SubmissionSteps = () => {
+const SubmissionSteps = ({ onSubmitSuccess }) => {
+  
+  const [showSubmissionForm, setShowSubmissionForm] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [checklist, setChecklist] = useState({
     original: false,
@@ -17,6 +20,10 @@ const SubmissionSteps = () => {
   const [manuscriptFiles, setManuscriptFiles] = useState([]);
   const [title, setTitle] = useState('');
   const [abstract, setAbstract] = useState('');
+  const [keywords, setKeywords] = useState('');
+  const [language, setLanguage] = useState('en');
+  const [agencies, setAgencies] = useState('');
+  const [references, setReferences] = useState('');
   const [authors, setAuthors] = useState([
     {
       id: 1,
@@ -30,6 +37,11 @@ const SubmissionSteps = () => {
       isPrincipal: true
     }
   ]);
+
+  // Validation states
+  const [validationErrors, setValidationErrors] = useState({});
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationWarnings, setValidationWarnings] = useState([]);
 
   const addAuthor = () => {
     const newAuthor = {
@@ -91,6 +103,22 @@ const SubmissionSteps = () => {
   const handleManuscriptUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
+      // Clear previous errors
+      const newErrors = { ...validationErrors };
+      delete newErrors.manuscriptFile;
+      setValidationErrors(newErrors);
+
+      // Validate file immediately
+      const fileErrors = manuscriptService.validateFile(file);
+      if (fileErrors.length > 0) {
+        setValidationErrors({
+          ...validationErrors,
+          manuscriptFile: fileErrors[0]
+        });
+        event.target.value = null;
+        return;
+      }
+
       const newFile = {
         id: Date.now(),
         originalFileName: file.name,
@@ -103,7 +131,7 @@ const SubmissionSteps = () => {
         }),
         file: file
       };
-      setManuscriptFiles([...manuscriptFiles, newFile]);
+      setManuscriptFiles([newFile]);
       event.target.value = null;
     }
   };
@@ -158,84 +186,117 @@ const SubmissionSteps = () => {
     }));
   };
 
+  // Validation Functions
+  const validateStep1 = () => {
+    const errors = {};
+    
+    if (!Object.values(checklist).every(val => val)) {
+      errors.checklist = 'Please confirm all items in the Submission Checklist';
+    }
+    
+    if (!copyrightAgreed) {
+      errors.copyright = 'You must agree to the Copyright Notice';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const validateStep2 = () => {
+    const errors = {};
+    
+    if (manuscriptFiles.length === 0) {
+      errors.manuscriptFile = 'Please upload your manuscript file';
+    } else {
+      const fileErrors = manuscriptService.validateFile(manuscriptFiles[0].file);
+      if (fileErrors.length > 0) {
+        errors.manuscriptFile = fileErrors[0];
+      }
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const validateStep3 = async () => {
+    setIsValidating(true);
+    const errors = {};
+    const warnings = [];
+
+    try {
+      // Validate title
+      const titleErrors = manuscriptService.validateTitle(title);
+      if (titleErrors.length > 0) {
+        errors.title = titleErrors[0];
+      }
+
+      // Validate abstract
+      const abstractErrors = manuscriptService.validateAbstract(abstract);
+      if (abstractErrors.length > 0) {
+        errors.abstract = abstractErrors[0];
+      }
+
+      // Validate authors
+      const authorErrors = manuscriptService.validateAuthors(authors);
+      if (authorErrors.length > 0) {
+        errors.authors = authorErrors[0];
+      }
+
+      // Validate references
+      const referencesArray = references.split('\n\n').filter(ref => ref.trim());
+      const referenceErrors = manuscriptService.validateReferences(referencesArray);
+      if (referenceErrors.length > 0) {
+        errors.references = referenceErrors[0];
+      }
+
+      // Check for keywords (warning only)
+      if (!keywords || keywords.trim().length === 0) {
+        warnings.push('Keywords are recommended for better indexing');
+      }
+
+      setValidationErrors(errors);
+      setValidationWarnings(warnings);
+      
+      return Object.keys(errors).length === 0;
+
+    } catch (error) {
+      console.error('Validation error:', error);
+      errors.general = 'An error occurred during validation';
+      setValidationErrors(errors);
+      return false;
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
   const isStep1Complete = () => {
     return Object.values(checklist).every(val => val) && copyrightAgreed;
   };
 
   const isStep2Complete = () => {
-    if (manuscriptFiles.length === 0) {
-      return false;
-    }
-    return true;
+    return manuscriptFiles.length > 0;
   };
 
   const isStep3Complete = () => {
-    // Check if at least one author has required fields filled
     const hasValidAuthor = authors.some(author => 
       author.firstName.trim() !== '' && 
       author.lastName.trim() !== '' && 
       author.email.trim() !== ''
     );
     
-    // Check if title and abstract are filled
-    if (!title.trim() || !abstract.trim()) {
-      return false;
-    }
-    
-    return hasValidAuthor;
+    return title.trim() !== '' && abstract.trim() !== '' && hasValidAuthor;
   };
 
-  const validateCurrentStep = () => {
+  const validateCurrentStep = async () => {
+    setValidationErrors({});
+    setValidationWarnings([]);
+
     if (currentStep === 1) {
-      if (!isStep1Complete()) {
-        const missingItems = [];
-        if (!Object.values(checklist).every(val => val)) {
-          missingItems.push('• Complete all items in the Submission Checklist');
-        }
-        if (!copyrightAgreed) {
-          missingItems.push('• Agree to the Copyright Notice');
-        }
-        alert('⚠️ Please complete the following required items:\n\n' + missingItems.join('\n'));
-        return false;
-      }
-      return true;
-    }
-    
-    if (currentStep === 2) {
-      if (!isStep2Complete()) {
-        alert('⚠️ Please upload your manuscript file before proceeding.');
-        return false;
-      }
-      return true;
-    }
-    
-    if (currentStep === 3) {
-      if (!isStep3Complete()) {
-        let missingFields = [];
-        
-        // Check author details
-        const hasValidAuthor = authors.some(author => 
-          author.firstName.trim() !== '' && 
-          author.lastName.trim() !== '' && 
-          author.email.trim() !== ''
-        );
-        
-        if (!hasValidAuthor) {
-          missingFields.push('• At least one author with First Name, Last Name, and Email');
-        }
-        
-        if (!title.trim()) {
-          missingFields.push('• Title');
-        }
-        
-        if (!abstract.trim()) {
-          missingFields.push('• Abstract');
-        }
-        
-        alert('⚠️ Please fill in all required fields:\n\n' + missingFields.join('\n'));
-        return false;
-      }
-      return true;
+      return validateStep1();
+    } else if (currentStep === 2) {
+      return validateStep2();
+    } else if (currentStep === 3) {
+      return await validateStep3();
     }
     
     return true;
@@ -254,10 +315,133 @@ const SubmissionSteps = () => {
     return true;
   };
 
+  const handleNext = async () => {
+    const isValid = await validateCurrentStep();
+    
+    if (isValid && currentStep < steps.length) {
+      setCurrentStep(currentStep + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setValidationErrors({});
+      setValidationWarnings([]);
+      setCurrentStep(currentStep - 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setIsValidating(true);
+
+      // Prepare manuscript data
+      const manuscriptData = {
+        title,
+        abstract,
+        authors: authors.map(author => ({
+          firstName: author.firstName,
+          middleName: author.middleName,
+          lastName: author.lastName,
+          email: author.email,
+          affiliation: author.affiliation,
+          country: author.country,
+          bioStatement: author.bioStatement,
+          isPrincipal: author.isPrincipal
+        })),
+        keywords: keywords.split(';').map(k => k.trim()).filter(k => k),
+        language,
+        references: references.split('\n\n').filter(ref => ref.trim()),
+        agencies: agencies.split(';').map(a => a.trim()).filter(a => a),
+        validationChecklist: {
+          originalWork: checklist.original,
+          correctFormat: checklist.fileFormat,
+          referencesValid: checklist.references,
+          properFormatting: checklist.formatting,
+          followsGuidelines: checklist.guidelines,
+          blindReviewReady: checklist.peerReview
+        },
+        copyrightAgreed: copyrightAgreed,
+        commentsForEditor: comments
+      };
+
+      const manuscriptFile = manuscriptFiles[0]?.file;
+      const suppFiles = supplementaryFiles.map(sf => sf.file);
+
+      // Submit to backend
+      const response = await manuscriptService.submitManuscript(
+        manuscriptData,
+        manuscriptFile,
+        suppFiles
+      );
+
+      if (response.success) {
+        alert('✅ Manuscript submitted successfully!\n\nYou will receive a confirmation email shortly.');
+        // Reset form or redirect
+        window.location.href = '/dashboard';
+      }
+
+    } catch (error) {
+      console.error('Submission error:', error);
+      
+      if (error.message.includes('validation')) {
+        alert('❌ Validation Error\n\n' + error.message);
+      } else {
+        alert('❌ Submission Failed\n\n' + (error.message || 'An error occurred during submission. Please try again.'));
+      }
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  const renderValidationErrors = () => {
+    if (Object.keys(validationErrors).length === 0) return null;
+
+    return (
+      <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded">
+        <div className="flex items-start">
+          <AlertCircle className="w-5 h-5 text-red-500 mr-3 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h4 className="font-semibold text-red-800 mb-2">Please fix the following errors:</h4>
+            <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
+              {Object.entries(validationErrors).map(([field, error]) => (
+                <li key={field}>{error}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderValidationWarnings = () => {
+    if (validationWarnings.length === 0) return null;
+
+    return (
+      <div className="mb-6 p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded">
+        <div className="flex items-start">
+          <AlertCircle className="w-5 h-5 text-yellow-500 mr-3 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h4 className="font-semibold text-yellow-800 mb-2">Recommendations:</h4>
+            <ul className="list-disc list-inside space-y-1 text-sm text-yellow-700">
+              {validationWarnings.map((warning, index) => (
+                <li key={index}>{warning}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderStepContent = () => {
     if (currentStep === 1) {
       return (
         <div className="space-y-8">
+          {renderValidationErrors()}
+          
           {/* Submission Checklist */}
           <div className="border-b pb-6">
             <h3 className="text-xl font-bold text-gray-800 mb-4">Submission Checklist</h3>
@@ -358,42 +542,12 @@ const SubmissionSteps = () => {
                   </a>{' '}
                   for demonstration purposes.
                 </p>
-                <p className="mb-2">
-                  In a real-world journal, this license allows others to share, adapt, and distribute the work with appropriate credit to the author(s) and the journal.
-                </p>
-                <p className="italic text-gray-600">
-                  (Note: This clone version is for educational or testing purposes only and does not represent a legally binding license.)
-                </p>
               </div>
 
               <div>
                 <h4 className="font-semibold mb-2">2. Author Responsibilities</h4>
                 <p>
-                  Authors confirm that their submission is original, does not infringe on existing copyrights, and has not been submitted elsewhere. Authors are responsible for obtaining permissions to reproduce any copyrighted materials included in their manuscripts.
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-semibold mb-2">3. Rights of Authors</h4>
-                <p className="mb-2">Authors retain the rights to their work and may:</p>
-                <ul className="list-disc ml-6 space-y-1">
-                  <li>Reuse the content for academic or educational purposes.</li>
-                  <li>Deposit their work in institutional repositories or personal websites with proper acknowledgment.</li>
-                  <li>Incorporate the published version in theses, books, or presentations.</li>
-                </ul>
-              </div>
-
-              <div>
-                <h4 className="font-semibold mb-2">4. Royalties</h4>
-                <p>
-                  No royalties or financial compensation are provided for publication. The author grants this demo journal a non-exclusive right to display and distribute their work for educational or illustrative purposes.
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-semibold mb-2">5. Agreement</h4>
-                <p>
-                  By submitting a manuscript, authors acknowledge and agree to these terms for demonstration or testing use within this platform.
+                  Authors confirm that their submission is original, does not infringe on existing copyrights, and has not been submitted elsewhere.
                 </p>
               </div>
             </div>
@@ -406,20 +560,9 @@ const SubmissionSteps = () => {
                 className="mt-1 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
               />
               <span className="text-sm text-gray-700 group-hover:text-gray-900 font-medium">
-                I acknowledge and agree to the terms of this Copyright Notice for demonstration or testing purposes.
+                I acknowledge and agree to the terms of this Copyright Notice.
               </span>
             </label>
-          </div>
-
-          {/* Privacy Statement */}
-          <div className="border-b pb-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Journal's Privacy Statement</h3>
-            <p className="text-sm text-gray-700 mb-3">
-              All personal information collected (such as author names, emails, and affiliations) will be used only for submission handling, review coordination, and communication related to this demo journal.
-            </p>
-            <p className="text-sm text-gray-700">
-              Data will <span className="font-semibold">not</span> be shared, sold, or used for any unrelated purpose. Information is stored securely and accessible only to authorized personnel involved in managing submissions.
-            </p>
           </div>
 
           {/* Comments for Editor */}
@@ -432,7 +575,6 @@ const SubmissionSteps = () => {
               className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[120px]"
               placeholder="Add any comments for the editor here..."
             />
-            <p className="text-xs text-gray-500 mt-2">* Denotes required field</p>
           </div>
         </div>
       );
@@ -441,14 +583,14 @@ const SubmissionSteps = () => {
     if (currentStep === 2) {
       return (
         <div className="space-y-8">
-          {/* Upload Instructions */}
+          {renderValidationErrors()}
+          
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-gray-700">
-              Upload your manuscript file here. Accepted formats include Microsoft Word (.doc, .docx), PDF (.pdf), and OpenOffice (.odt) files.
+              Upload your manuscript file here. Accepted formats include Microsoft Word (.doc, .docx), PDF (.pdf), and OpenOffice (.odt) files. Maximum file size: 20MB.
             </p>
           </div>
 
-          {/* Upload Section */}
           <div className="border-b pb-6">
             <h3 className="text-xl font-bold text-gray-800 mb-4">Upload Manuscript</h3>
             <div>
@@ -464,7 +606,6 @@ const SubmissionSteps = () => {
             </div>
           </div>
 
-          {/* Uploaded Files */}
           {manuscriptFiles.length > 0 && (
             <div>
               <h3 className="text-xl font-bold text-gray-800 mb-4">Uploaded Files</h3>
@@ -501,6 +642,9 @@ const SubmissionSteps = () => {
     if (currentStep === 3) {
       return (
         <div className="space-y-8">
+          {renderValidationErrors()}
+          {renderValidationWarnings()}
+          
           {/* Authors Section */}
           <div className="border-b pb-6">
             <h3 className="text-xl font-bold text-gray-800 mb-4">Authors</h3>
@@ -629,9 +773,6 @@ const SubmissionSteps = () => {
 
                   {authors.length > 1 && (
                     <div className="pt-2 border-t">
-                      <p className="text-xs text-gray-500 mb-2">
-                        ↑ ↓ Reorder authors to appear in the order they will be listed on publication.
-                      </p>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="radio"
@@ -671,8 +812,11 @@ const SubmissionSteps = () => {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Enter manuscript title"
+                  placeholder="Enter manuscript title (max 20 words)"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Word count: {title.trim().split(/\s+/).filter(w => w).length} / 20 words
+                </p>
               </div>
 
               <div>
@@ -684,8 +828,11 @@ const SubmissionSteps = () => {
                   onChange={(e) => setAbstract(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   rows="6"
-                  placeholder="Enter abstract"
+                  placeholder="Enter abstract (250-300 words)"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Word count: {abstract.trim().split(/\s+/).filter(w => w).length} words (Required: 250-300)
+                </p>
               </div>
             </div>
           </div>
@@ -704,6 +851,8 @@ const SubmissionSteps = () => {
                 </label>
                 <input
                   type="text"
+                  value={keywords}
+                  onChange={(e) => setKeywords(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="keyword1; keyword2; keyword3"
                 />
@@ -713,14 +862,17 @@ const SubmissionSteps = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Language
                 </label>
-                <input
-                  type="text"
-                  defaultValue="en"
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  English=en; French=fr; Spanish=es
-                </p>
+                >
+                  <option value="en">English</option>
+                  <option value="fr">French</option>
+                  <option value="es">Spanish</option>
+                  <option value="de">German</option>
+                  <option value="zh">Chinese</option>
+                </select>
               </div>
             </div>
           </div>
@@ -729,7 +881,7 @@ const SubmissionSteps = () => {
           <div className="border-b pb-6">
             <h3 className="text-xl font-bold text-gray-800 mb-4">Contributors and Supporting Agencies</h3>
             <p className="text-sm text-gray-600 mb-4">
-              Identify agencies (a person, an organization, or a service) that made contributions to the content or provided funding or support for the work presented in this submission. Separate them with a semi-colon (e.g. John Doe, Metro University; Master University, Department of Computer Science).
+              Identify agencies that made contributions or provided funding. Separate with semi-colons.
             </p>
             
             <div>
@@ -738,6 +890,8 @@ const SubmissionSteps = () => {
               </label>
               <input
                 type="text"
+                value={agencies}
+                onChange={(e) => setAgencies(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="Agency 1; Agency 2"
               />
@@ -748,22 +902,25 @@ const SubmissionSteps = () => {
           <div>
             <h3 className="text-xl font-bold text-gray-800 mb-4">References</h3>
             <p className="text-sm text-gray-600 mb-4">
-              Provide a formatted list of references for works cited in this submission. Please separate individual references with a blank line.
+              Provide a formatted list of references. Separate individual references with a blank line. Minimum 20 references required.
             </p>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                References
+                References <span className="text-red-500">*</span>
               </label>
               <textarea
+                value={references}
+                onChange={(e) => setReferences(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 rows="8"
                 placeholder="Enter references here, separated by blank lines"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Reference count: {references.split('\n\n').filter(ref => ref.trim()).length} / 20 minimum
+              </p>
             </div>
           </div>
-
-          <p className="text-xs text-gray-500 pt-4 border-t">* Denotes required field</p>
         </div>
       );
     }
@@ -771,14 +928,12 @@ const SubmissionSteps = () => {
     if (currentStep === 4) {
       return (
         <div className="space-y-8">
-          {/* Description */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-gray-700">
-              This optional step allows Supplementary Files to be added to a submission. The files, which can be in any format, might include (a) research instruments, (b) data sets, which comply with the terms of the study's research ethics review, (c) sources that otherwise would be unavailable to readers, (d) figures and tables that cannot be integrated into the text itself, or other materials that add to the contribution of the work.
+              This optional step allows Supplementary Files to be added to a submission. The files can include research instruments, data sets, figures, tables, or other materials.
             </p>
           </div>
 
-          {/* Supplementary Files Table */}
           <div className="border-b pb-6">
             <h3 className="text-xl font-bold text-gray-800 mb-4">Supplementary Files</h3>
             
@@ -821,7 +976,6 @@ const SubmissionSteps = () => {
             )}
           </div>
 
-          {/* Upload Section */}
           <div>
             <div className="flex items-start gap-4">
               <div className="flex-1">
@@ -834,14 +988,6 @@ const SubmissionSteps = () => {
                   className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
-              <div className="pt-7">
-                <a 
-                  href="#" 
-                  className="text-blue-600 hover:underline text-sm font-medium whitespace-nowrap"
-                >
-                  ENSURING A BLIND REVIEW
-                </a>
-              </div>
             </div>
           </div>
         </div>
@@ -850,17 +996,72 @@ const SubmissionSteps = () => {
 
     if (currentStep === 5) {
       const allFiles = getAllUploadedFiles();
+      const handleSubmit = async () => {
+        setIsSubmitting(true);
+        try {
+          console.log('Submitting manuscript:', formData);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // CREATE SUBMISSION DATA OBJECT
+          const submissionData = {
+            id: Math.floor(Math.random() * 10000), // Generate random ID
+            status: 'Awaiting assignment',
+            submittedDate: new Date().toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+            section: 'Articles',
+            title: title,
+            authors: authors.map(author => ({
+              firstName: author.firstName,
+              lastName: author.lastName,
+              email: author.email,
+              isPrincipal: author.isPrincipal
+            })),
+            abstract: abstract,
+            keywords: formData.metadata.keywords ? 
+              formData.metadata.keywords.split(';').map(k => k.trim()).filter(k => k) : 
+              [],
+            manuscriptFile: {
+              name: manuscriptFiles[0]?.originalFileName || 'manuscript.pdf',
+              size: manuscriptFiles[0]?.fileSize || '0 KB',
+              uploadDate: new Date().toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })
+            },
+            supplementaryFiles: supplementaryFiles.map(file => ({
+              name: file.originalFileName,
+              size: file.file ? (file.file.size / 1024).toFixed(2) + ' KB' : 'N/A'
+            }))
+          };
+          
+          // CALL PARENT COMPONENT'S SUCCESS HANDLER
+          if (onSubmitSuccess) {
+            onSubmitSuccess(submissionData);
+          } else {
+            alert('Manuscript submitted successfully!');
+          }
+        } catch (error) {
+          console.error('Submission error:', error);
+          alert('Failed to submit manuscript. Please try again.');
+        } finally {
+          setIsSubmitting(false);
+        }
+      };
       
       return (
         <div className="space-y-8">
-          {/* Confirmation Message */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-gray-700">
-              To submit your manuscript, click <strong>Finish Submission</strong>. The principal contact will receive an acknowledgement by email and will be able to view the submission's progress through the editorial process by logging in to the journal web site. Thank you for your interest in publishing with us.
+              To submit your manuscript, click <strong>Finish Submission</strong>. You will receive an acknowledgement by email and will be able to track your submission's progress.
             </p>
           </div>
 
-          {/* File Summary */}
           <div>
             <h3 className="text-xl font-bold text-gray-800 mb-4">File Summary</h3>
             
@@ -896,19 +1097,25 @@ const SubmissionSteps = () => {
             )}
           </div>
 
-          {/* Action Buttons */}
           <div className="flex gap-4 pt-6 border-t">
             <button
-              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold"
-              onClick={() => {
-                alert('Submission completed successfully! You will receive a confirmation email shortly.');
-              }}
+              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold flex items-center gap-2"
+              onClick={handleSubmit}
+              disabled={isValidating}
             >
-              Finish Submission
+              {isValidating ? (
+                <>
+                  <Loader className="w-5 h-5 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                'Finish Submission'
+              )}
             </button>
             <button
               className="bg-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-400 transition-colors font-semibold"
               onClick={() => setCurrentStep(1)}
+              disabled={isValidating}
             >
               Cancel
             </button>
@@ -917,85 +1124,7 @@ const SubmissionSteps = () => {
       );
     }
 
-    if (currentStep === 5) {
-      const allFiles = getAllUploadedFiles();
-      
-      return (
-        <div className="space-y-8">
-          {/* Confirmation Message */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <p className="text-sm text-gray-700">
-              To submit your manuscript to <strong>International Journal of Engineering, Science and Information Technology</strong> click Finish Submission. The submission's principal contact will receive an acknowledgement by email and will be able to view the submission's progress through the editorial process by logging in to the journal web site. Thank you for your interest in publishing with International Journal of Engineering, Science and Information Technology.
-            </p>
-          </div>
-
-          {/* File Summary */}
-          <div>
-            <h3 className="text-xl font-bold text-gray-800 mb-4">File Summary</h3>
-            
-            {allFiles.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse border border-gray-300">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">ID</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">ORIGINAL FILE NAME</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">TYPE</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">FILE SIZE</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">DATE UPLOADED</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {allFiles.map((file, index) => (
-                      <tr key={file.id} className="hover:bg-gray-50">
-                        <td className="border border-gray-300 px-4 py-2 text-sm">{index + 1}</td>
-                        <td className="border border-gray-300 px-4 py-2 text-sm">{file.originalFileName}</td>
-                        <td className="border border-gray-300 px-4 py-2 text-sm">{file.type}</td>
-                        <td className="border border-gray-300 px-4 py-2 text-sm">{file.fileSize}</td>
-                        <td className="border border-gray-300 px-4 py-2 text-sm">{file.dateUploaded}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
-                <p className="text-sm text-gray-600 italic">No files have been attached to this submission.</p>
-              </div>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-4 pt-6 border-t">
-            <button
-              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold"
-              onClick={() => {
-                alert('Submission completed successfully!');
-              }}
-            >
-              Finish Submission
-            </button>
-            <button
-              className="bg-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-400 transition-colors font-semibold"
-              onClick={() => setCurrentStep(1)}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="min-h-[200px] flex items-center justify-center text-gray-400">
-        <div className="text-center">
-          <p className="text-lg mb-2">Step {currentStep} content will be added here</p>
-          <p className="text-sm">
-            This area will contain forms and functionality for step {currentStep}
-          </p>
-        </div>
-      </div>
-    );
+    return null;
   };
 
   return (
@@ -1109,35 +1238,58 @@ const SubmissionSteps = () => {
           {/* Navigation Buttons */}
           <div className="flex justify-between mt-8 pt-6 border-t">
             <button
-              onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
-              disabled={currentStep === 1}
+              onClick={handleBack}
+              disabled={currentStep === 1 || isValidating}
               className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-                currentStep === 1
+                currentStep === 1 || isValidating
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
               }`}
             >
               Previous
             </button>
-            <button
-              onClick={() => {
-                if (currentStep < steps.length && validateCurrentStep()) {
-                  setCurrentStep(currentStep + 1);
-                }
-              }}
-              disabled={currentStep === steps.length}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all flex items-center gap-2 ${
-                currentStep === steps.length
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
-              }`}
-            >
-              {currentStep === steps.length ? 'Review Submission' : 'Save and Continue'}
-              {currentStep !== steps.length && <ChevronRight size={20} />}
-            </button>
+            {currentStep < steps.length && (
+              <button
+                onClick={handleNext}
+                disabled={!canProceed() || isValidating}
+                className={`px-6 py-3 rounded-lg font-semibold transition-all flex items-center gap-2 ${
+                  !canProceed() || isValidating
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                }`}
+              >
+                {isValidating ? (
+                  <>
+                    <Loader className="w-5 h-5 animate-spin" />
+                    Validating...
+                  </>
+                ) : (
+                  <>
+                    Save and Continue
+                    <ChevronRight size={20} />
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
+      {/* Update the Submission Modal section */}
+      {showSubmissionForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
+          <div className="min-h-screen flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto relative">
+              <button
+                onClick={() => setShowSubmissionForm(false)}
+                className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg z-10"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+              <SubmissionSteps onSubmitSuccess={handleSubmissionSuccess} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
