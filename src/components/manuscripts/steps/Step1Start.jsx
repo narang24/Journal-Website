@@ -1,100 +1,247 @@
-import React from 'react'
-import { 
-  X, 
-  FileText, 
-  Upload, 
-  CheckCircle, 
-  User, 
-  Tag, 
-  AlertTriangle,
-  Plus,
-  Trash2,
-  UploadCloud
-} from 'lucide-react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AlertTriangle, ChevronRight } from 'lucide-react';
 
-const Step1Start = ({ formData, handleChecklistChange, errors }) => (
-  <div className="space-y-6">
-    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-      <p className="text-sm text-gray-700">
-        The submission process requires that you check each of the following items before proceeding.
-      </p>
+const Step1Start = ({ formData, setFormData, validationErrors, setValidationErrors, steps }) => {
+  const navigate = useNavigate();
+
+  const handleChecklistChange = (field) => {
+    setFormData(prev => ({
+      ...prev,
+      checklist: {
+        ...prev.checklist,
+        [field]: !prev.checklist[field]
+      }
+    }));
+    if (validationErrors.checklist) {
+      setValidationErrors(prev => ({ ...prev, checklist: '' }));
+    }
+  };
+
+  const handleCopyrightChange = () => {
+    setFormData(prev => ({
+      ...prev,
+      copyrightAgreed: !prev.copyrightAgreed
+    }));
+    if (validationErrors.copyright) {
+      setValidationErrors(prev => ({ ...prev, copyright: '' }));
+    }
+  };
+
+  const handleCommentsChange = (e) => {
+    setFormData(prev => ({
+      ...prev,
+      comments: e.target.value
+    }));
+  };
+
+  const validateStep = () => {
+    const errors = {};
+    const { original, fileFormat, references, formatting, guidelines, peerReview } = formData.checklist;
+    
+    if (!original || !fileFormat || !references || !formatting || !guidelines || !peerReview) {
+      errors.checklist = 'Please confirm all items in the checklist';
+    }
+    
+    if (!formData.copyrightAgreed) {
+      errors.copyright = 'You must acknowledge the copyright notice';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleNext = () => {
+    if (validateStep()) {
+      navigate('/submit-manuscript/upload');
+    }
+  };
+
+  const isComplete = () => {
+    const { original, fileFormat, references, formatting, guidelines, peerReview } = formData.checklist;
+    return original && fileFormat && references && formatting && guidelines && peerReview && formData.copyrightAgreed;
+  };
+
+  return (
+    <div className="max-w-5xl mx-auto">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="space-y-8">
+          {/* Validation Errors */}
+          {Object.keys(validationErrors).length > 0 && (
+            <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded flex items-start">
+              <AlertTriangle className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-semibold mb-1">Please fix the following errors:</p>
+                <ul className="list-disc list-inside space-y-1 text-sm">
+                  {Object.entries(validationErrors).map(([field, error]) => (
+                    <li key={field}>{error}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Submission Checklist */}
+          <div className="border-b pb-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Submission Checklist</h3>
+            <p className="text-gray-600 mb-4 text-sm">
+              Before submitting your manuscript, please ensure that:
+            </p>
+            
+            <div className="space-y-3">
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={formData.checklist.original}
+                  onChange={() => handleChecklistChange('original')}
+                  className="mt-1 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                />
+                <span className="text-sm text-gray-700 group-hover:text-gray-900">
+                  The manuscript is original, has not been published elsewhere, and is not under consideration by any other journal.
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={formData.checklist.fileFormat}
+                  onChange={() => handleChecklistChange('fileFormat')}
+                  className="mt-1 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                />
+                <span className="text-sm text-gray-700 group-hover:text-gray-900">
+                  The submission file is prepared in Microsoft Word, OpenOffice, or PDF format.
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={formData.checklist.references}
+                  onChange={() => handleChecklistChange('references')}
+                  className="mt-1 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                />
+                <span className="text-sm text-gray-700 group-hover:text-gray-900">
+                  All references include valid DOIs or URLs (where available).
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={formData.checklist.formatting}
+                  onChange={() => handleChecklistChange('formatting')}
+                  className="mt-1 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                />
+                <span className="text-sm text-gray-700 group-hover:text-gray-900">
+                  The text is double-spaced, uses a 12-point Times New Roman font, and includes figures and tables within the text at appropriate locations.
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={formData.checklist.guidelines}
+                  onChange={() => handleChecklistChange('guidelines')}
+                  className="mt-1 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                />
+                <span className="text-sm text-gray-700 group-hover:text-gray-900">
+                  The manuscript follows the formatting and citation style mentioned in the{' '}
+                  <a href="#" className="text-blue-600 hover:underline font-medium">Author Guidelines</a>{' '}
+                  section.
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={formData.checklist.peerReview}
+                  onChange={() => handleChecklistChange('peerReview')}
+                  className="mt-1 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                />
+                <span className="text-sm text-gray-700 group-hover:text-gray-900">
+                  The instructions for{' '}
+                  <a href="#" className="text-blue-600 hover:underline font-medium">Anonymous Peer Review</a>{' '}
+                  have been followed if submitting to a peer-reviewed section.
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* Copyright Notice */}
+          <div className="border-b pb-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Copyright Notice</h3>
+
+            <div className="space-y-4 text-sm text-gray-700">
+              <div>
+                <h4 className="font-semibold mb-2">1. License</h4>
+                <p className="mb-2">
+                  This platform follows the principles of the{' '}
+                  <a href="#" className="text-blue-600 hover:underline font-medium">
+                    Creative Commons Attribution 4.0 International License (CC BY 4.0)
+                  </a>{' '}
+                  for demonstration purposes.
+                </p>
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-2">2. Author Responsibilities</h4>
+                <p>
+                  Authors confirm that their submission is original, does not infringe on existing copyrights, and has not been submitted elsewhere.
+                </p>
+              </div>
+            </div>
+
+            <label className="flex items-start gap-3 cursor-pointer group mt-4">
+              <input
+                type="checkbox"
+                checked={formData.copyrightAgreed}
+                onChange={handleCopyrightChange}
+                className="mt-1 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+              />
+              <span className="text-sm text-gray-700 group-hover:text-gray-900 font-medium">
+                I acknowledge and agree to the terms of this Copyright Notice.
+              </span>
+            </label>
+          </div>
+
+          {/* Comments for Editor */}
+          <div>
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Comments for the Editor</h3>
+            <p className="text-sm text-gray-600 mb-2">Enter text (optional)</p>
+            <textarea
+              value={formData.comments}
+              onChange={handleCommentsChange}
+              className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[120px]"
+              placeholder="Add any comments for the editor here..."
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation Buttons */}
+      <div className="mt-8 flex justify-between">
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="px-6 py-3 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={handleNext}
+          disabled={!isComplete()}
+          className={`px-6 py-3 rounded-lg font-semibold transition-all flex items-center gap-2 ${
+            isComplete()
+              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg'
+              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+          }`}
+        >
+          Save and Continue
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      </div>
     </div>
+  );
+};
 
-    {errors.checklist && (
-      <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded flex items-center">
-        <AlertTriangle className="w-5 h-5 mr-2 flex-shrink-0" />
-        <span className="text-sm">{errors.checklist}</span>
-      </div>
-    )}
-
-    <div className="space-y-4">
-      <div className="flex items-start space-x-3">
-        <input
-          type="checkbox"
-          id="submissionChecklist"
-          checked={formData.checklist.submissionChecklist}
-          onChange={() => handleChecklistChange('submissionChecklist')}
-          className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 mt-0.5 flex-shrink-0"
-        />
-        <label htmlFor="submissionChecklist" className="text-sm text-gray-700 cursor-pointer">
-          The submission has not been previously published, nor is it before another journal for consideration (or an explanation has been provided in Comments to the Editor).
-        </label>
-      </div>
-
-      <div className="flex items-start space-x-3">
-        <input
-          type="checkbox"
-          id="copyrightNotice"
-          checked={formData.checklist.copyrightNotice}
-          onChange={() => handleChecklistChange('copyrightNotice')}
-          className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 mt-0.5 flex-shrink-0"
-        />
-        <label htmlFor="copyrightNotice" className="text-sm text-gray-700 cursor-pointer">
-          The submission file is in OpenOffice, Microsoft Word, or RTF document file format.
-        </label>
-      </div>
-
-      <div className="flex items-start space-x-3">
-        <input
-          type="checkbox"
-          id="privacyStatement"
-          checked={formData.checklist.privacyStatement}
-          onChange={() => handleChecklistChange('privacyStatement')}
-          className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 mt-0.5 flex-shrink-0"
-        />
-        <label htmlFor="privacyStatement" className="text-sm text-gray-700 cursor-pointer">
-          Where available, URLs for the references have been provided.
-        </label>
-      </div>
-
-      <div className="flex items-start space-x-3">
-        <input
-          type="checkbox"
-          id="formatting"
-          checked={formData.checklist.formatting || false}
-          onChange={() => handleChecklistChange('formatting')}
-          className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 mt-0.5 flex-shrink-0"
-        />
-        <label htmlFor="formatting" className="text-sm text-gray-700 cursor-pointer">
-          The text adheres to the stylistic and bibliographic requirements outlined in the Author Guidelines.
-        </label>
-      </div>
-    </div>
-
-    <div className="bg-gray-50 border border-gray-200 rounded p-4 mt-6">
-      <h4 className="font-semibold text-gray-900 mb-2 text-sm">Copyright Notice</h4>
-      <p className="text-xs text-gray-600 leading-relaxed">
-        Authors who publish with this journal agree to retain copyright and grant the journal right of first publication with the work simultaneously licensed under a Creative Commons Attribution License that allows others to share the work with an acknowledgement of the work's authorship and initial publication in this journal.
-      </p>
-    </div>
-
-    <div className="bg-gray-50 border border-gray-200 rounded p-4">
-      <h4 className="font-semibold text-gray-900 mb-2 text-sm">Privacy Statement</h4>
-      <p className="text-xs text-gray-600 leading-relaxed">
-        The names and email addresses entered in this journal site will be used exclusively for the stated purposes of this journal and will not be made available for any other purpose or to any other party.
-      </p>
-    </div>
-  </div>
-);
-
-export default Step1Start
+export default Step1Start;

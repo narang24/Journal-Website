@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation, Routes, Route } from 'react-router-dom';
 import { 
   BookOpen, 
   FileText, 
@@ -12,9 +13,7 @@ import {
   AlertTriangle,
   TrendingUp,
   TrendingDown,
-  X,
   Bell,
-  MessageSquare,
   ArrowRight,
   BarChart3,
   Activity,
@@ -25,7 +24,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import SubmissionDetailView from '../submissions/SubmissionDetailView';
-import SubmissionSteps from '../SubmissionSteps';
 import Sidebar from '../Sidebar';
 
 // Mock API Service
@@ -101,31 +99,6 @@ const StatCard = ({ title, value, change, changeType, icon: Icon, gradient }) =>
   </div>
 );
 
-// Activity Item
-const ActivityItem = ({ activity }) => {
-  const statusDots = {
-    success: 'bg-green-500',
-    info: 'bg-blue-500',
-    warning: 'bg-orange-500',
-    error: 'bg-red-500'
-  };
-
-  return (
-    <div className="flex items-start space-x-4 p-4 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer group">
-      <div className="relative">
-        <div className={`w-3 h-3 rounded-full ${statusDots[activity.status]} ring-4 ring-white`}></div>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-          {activity.description}
-        </p>
-        <p className="text-xs text-gray-500 mt-1">{activity.timestamp}</p>
-      </div>
-      <ArrowRight className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-    </div>
-  );
-};
-
 // Alert Card
 const AlertCard = ({ alert, onDismiss }) => {
   const alertStyles = {
@@ -152,33 +125,8 @@ const AlertCard = ({ alert, onDismiss }) => {
             <p className="text-xs opacity-90">{alert.message}</p>
           </div>
         </div>
-        <button 
-          onClick={() => onDismiss(alert.id)}
-          className="text-current opacity-50 hover:opacity-100 transition-opacity"
-        >
-          <X className="w-4 h-4" />
-        </button>
       </div>
     </div>
-  );
-};
-
-// Quick Action Button
-const QuickActionButton = ({ icon: Icon, label, onClick, color = "blue" }) => {
-  const colorClasses = {
-    blue: "bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200",
-    green: "bg-green-50 text-green-600 hover:bg-green-100 border-green-200",
-    purple: "bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-200"
-  };
-
-  return (
-    <button 
-      onClick={onClick}
-      className={`flex items-center space-x-2 px-4 py-3 rounded-xl border-2 ${colorClasses[color]} transition-all hover:shadow-md transform hover:-translate-y-0.5 font-medium text-sm`}
-    >
-      <Icon className="w-5 h-5" />
-      <span>{label}</span>
-    </button>
   );
 };
 
@@ -251,10 +199,12 @@ const ManuscriptCardCompact = ({ manuscript, role }) => {
 // Main Dashboard Component
 const Dashboard = () => {
   const { user, logout, currentRole, switchRole } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
   const [manuscripts, setManuscripts] = useState([]);
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
-  const [showSubmissionForm, setShowSubmissionForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [error, setError] = useState('');
@@ -266,11 +216,20 @@ const Dashboard = () => {
     { id: 1, type: 'urgent', title: 'Urgent Revision Required', message: 'Article requires revisions. Deadline in 2 days.' },
     { id: 2, type: 'warning', title: 'Review Deadline', message: 'Review due in 3 days.' }
   ]);
-  const [activities] = useState([
-    { id: 1, description: 'Review completed for React article', timestamp: '3 hours ago', status: 'success' },
-    { id: 2, description: 'Article published', timestamp: '5 hours ago', status: 'info' },
-    { id: 3, description: 'New manuscript submitted', timestamp: '1 day ago', status: 'info' }
-  ]);
+
+  // Check for submission success from location state
+  useEffect(() => {
+    if (location.state?.submissionSuccess) {
+      // Show success message
+      alert('✅ Manuscript submitted successfully!');
+      // Clear the state
+      navigate(location.pathname, { replace: true, state: {} });
+      
+      if (location.state?.submissionData) {
+        setSubmissionDetailView(location.state.submissionData);
+      }
+    }
+  }, [location, navigate]);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -308,9 +267,8 @@ const Dashboard = () => {
     }
   };
 
-  const handleSubmissionSuccess = (submissionData) => {
-    setSubmissionDetailView(submissionData);
-    setShowSubmissionForm(false);
+  const handleNewSubmission = () => {
+    navigate('/submit-manuscript');
   };
 
   const handleBackFromDetail = () => {
@@ -336,13 +294,13 @@ const Dashboard = () => {
             {/* Welcome Section */}
             <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">My Submissions</h1>
+                <h1 className="text-3xl font-bold text-gray-800 mb-2">My Submissions</h1>
                 <p className="text-gray-600">Manage and track your manuscript submissions</p>
               </div>
               
               {roleState === 'publisher' && (
                 <button 
-                  onClick={() => setShowSubmissionForm(true)}
+                  onClick={handleNewSubmission}
                   className="mt-4 sm:mt-0 flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:shadow-xl transition-all transform hover:-translate-y-0.5 font-semibold w-fit"
                 >
                   <Upload className="w-5 h-5" />
@@ -490,7 +448,7 @@ const Dashboard = () => {
                         </p>
                         {roleState === 'publisher' && (
                           <button
-                            onClick={() => setShowSubmissionForm(true)}
+                            onClick={handleNewSubmission}
                             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                           >
                             <Plus className="w-4 h-4 mr-2" />
@@ -677,23 +635,6 @@ const Dashboard = () => {
           </div>
         </main>
       </div>
-
-      {/* Submission Modal */}
-      {showSubmissionForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto">
-          <div className="min-h-screen flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto relative">
-              <button
-                onClick={() => setShowSubmissionForm(false)}
-                className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg z-10"
-              >
-                <X className="w-6 h-6 text-gray-600" />
-              </button>
-              <SubmissionSteps onSubmissionSuccess={handleSubmissionSuccess} />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

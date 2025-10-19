@@ -6,6 +6,7 @@ import RegisterForm from './components/auth/RegisterForm';
 import EmailVerificationForm from './components/auth/EmailVerificationForm';
 import ForgotPasswordForm from './components/auth/ForgotPasswordForm';
 import ResetPasswordForm from './components/auth/ResetPasswordForm';
+import SubmissionWorkflow from './components/submissions/SubmissionWorkflow';
 
 // Add the LoadingState component
 const LoadingState = () => (
@@ -127,22 +128,14 @@ const AuthLayout = ({ children }) => (
     
     {/* Large Decorative Elements */}
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {/* Main decorative circle - top right */}
       <div className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-blue-300/25 to-indigo-400/30 blur-3xl"></div>
-      
-      {/* Secondary circle - bottom left */}
       <div className="absolute -bottom-32 -left-32 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-slate-300/20 to-gray-400/25 blur-2xl"></div>
-      
-      {/* Accent circle - center */}
       <div className="absolute top-1/3 left-1/4 w-[200px] h-[200px] rounded-full bg-gradient-to-br from-indigo-200/25 to-blue-300/30 blur-xl"></div>
-      
-      {/* Additional depth circle */}
       <div className="absolute bottom-1/4 right-1/3 w-[300px] h-[300px] rounded-full bg-gradient-to-tl from-purple-200/20 to-blue-200/25 blur-2xl"></div>
     </div>
     
     {/* Modern Card-like Background Elements */}
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {/* Floating card elements */}
       <div className="absolute top-20 left-10 w-32 h-20 bg-white/50 backdrop-blur-sm rounded-2xl transform rotate-12 shadow-lg"></div>
       <div className="absolute bottom-32 right-16 w-24 h-32 bg-blue-50/70 backdrop-blur-sm rounded-2xl transform -rotate-6 shadow-lg"></div>
       <div className="absolute top-1/2 left-8 w-16 h-16 bg-indigo-50/60 backdrop-blur-sm rounded-xl transform rotate-45 shadow-md"></div>
@@ -182,10 +175,20 @@ const App = () => {
         <Routes>
           {/* Protected Routes - Only accessible when logged in */}
           <Route 
-            path="/dashboard" 
+            path="/dashboard/*" 
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Submission Workflow Route */}
+          <Route 
+            path="/submit-manuscript/*" 
+            element={
+              <ProtectedRoute>
+                <SubmissionWorkflow />
               </ProtectedRoute>
             } 
           />
@@ -263,7 +266,7 @@ const App = () => {
   );
 };
 
-// Component to handle redirects for unknown routes - UPDATED
+// Component to handle redirects for unknown routes
 const RedirectBasedOnAuth = () => {
   const { user, loading } = useAuth();
 
